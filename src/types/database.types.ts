@@ -56,7 +56,17 @@ export interface Database {
           status?: BookingStatus;
           admin_notes?: string | null;
         };
+        // Required by @supabase/postgrest-js's GenericTable constraint even
+        // though this table has no foreign keys — without it (and without
+        // Views/Functions below), the client silently types every table as
+        // `never` instead of erroring, which only surfaces as a `next build`
+        // type-check failure, never in `next dev`.
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 }
