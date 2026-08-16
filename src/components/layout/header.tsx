@@ -40,7 +40,7 @@ export function Header() {
         <div className="hidden md:block">
           <Link
             href="/book"
-            className="inline-flex items-center rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90"
+            className="inline-flex items-center rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
           >
             Book Now
           </Link>
@@ -90,7 +90,7 @@ export function Header() {
             <li className="pt-2">
               <Link
                 href="/book"
-                className="block rounded-full bg-accent px-5 py-3 text-center text-sm font-semibold text-accent-foreground"
+                className="block rounded-full bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Book Now

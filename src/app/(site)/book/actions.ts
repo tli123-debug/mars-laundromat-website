@@ -1,0 +1,55 @@
+"use server";
+
+import { createClient } from "@/lib/supabase/server";
+import { bookingSchema, type BookingInput } from "@/lib/validations/booking-schema";
+
+type ActionResult = { status: "success" | "error"; message: string };
+
+export async function createBooking(input: BookingInput): Promise<ActionResult> {
+  // Client-side validation is UX only — never trust it as the security boundary.
+  const parsed = bookingSchema.safeParse(input);
+  if (!parsed.success) {
+    return { status: "error", message: "Please check the form and try again." };
+  }
+
+  if (parsed.data.companyWebsite) {
+    // Honeypot tripped — return a normal-looking success so bots don't learn it failed.
+    return { status: "success", message: "Thanks! We'll be in touch shortly." };
+  }
+
+  // Generated here (not left to the DB default) so we have the id without
+  // reading the row back — anon can only INSERT, not SELECT, so chaining
+  // .select() after .insert() would need a read the RLS policy denies,
+  // which fails the whole insert with a misleading RLS-violation error.
+  const bookingId = crypto.randomUUID();
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("bookings").insert({
+    id: bookingId,
+    name: parsed.data.name,
+    phone: parsed.data.phone,
+    address: parsed.data.address,
+    preferred_pickup_date: parsed.data.preferredPickupDate,
+    preferred_pickup_window: parsed.data.preferredPickupWindow,
+    preferred_delivery_date: parsed.data.preferredDeliveryDate || null,
+    preferred_delivery_window: parsed.data.preferredDeliveryWindow || null,
+    special_instructions: parsed.data.specialInstructions || null,
+  });
+
+  if (error) {
+    console.error("Booking insert failed:", error);
+    return {
+      status: "error",
+      message: "Something went wrong. Please try again or message us on WhatsApp.",
+    };
+  }
+
+  // Email notification (Resend) lands in Phase 4, using bookingId + parsed.data.
+  // The booking being durably saved is the success condition for the user —
+  // nothing else to do here yet.
+
+  return {
+    status: "success",
+    message: "Thanks! We've received your request and will confirm shortly.",
+  };
+}

@@ -14,7 +14,7 @@ export default function AboutPage() {
   return (
     <>
       <section className="mx-auto max-w-4xl px-6 pb-4 pt-16 text-center sm:pt-24">
-        <p className="text-sm font-semibold uppercase tracking-widest text-accent">
+        <p className="text-sm font-semibold uppercase tracking-widest text-primary">
           {about.hero.eyebrow}
         </p>
         <h1 className="mt-4 font-display text-4xl font-semibold leading-tight sm:text-5xl">
@@ -106,7 +106,7 @@ export default function AboutPage() {
           <div className="mt-8 flex justify-center">
             <Link
               href="/book"
-              className="inline-flex items-center rounded-full bg-accent px-6 py-3 text-base font-semibold text-accent-foreground transition-opacity hover:opacity-90"
+              className="inline-flex items-center rounded-full bg-primary px-6 py-3 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
             >
               Book Now
             </Link>

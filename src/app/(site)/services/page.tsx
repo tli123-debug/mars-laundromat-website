@@ -18,7 +18,7 @@ export default function ServicesPage() {
   return (
     <>
       <section className="mx-auto max-w-4xl px-6 pb-4 pt-16 text-center sm:pt-24">
-        <p className="text-sm font-semibold uppercase tracking-widest text-accent">
+        <p className="text-sm font-semibold uppercase tracking-widest text-primary">
           {services.hero.eyebrow}
         </p>
         <h1 className="mt-4 font-display text-4xl font-semibold leading-tight sm:text-5xl">
@@ -52,7 +52,7 @@ export default function ServicesPage() {
                 <ul className="mt-5 space-y-2">
                   {offering.details.map((detail) => (
                     <li key={detail} className="flex items-start gap-2 text-sm">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                       <span>{detail}</span>
                     </li>
                   ))}
@@ -71,7 +71,7 @@ export default function ServicesPage() {
           <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {services.howItWorks.steps.map((step, i) => (
               <div key={step.title}>
-                <span className="font-display text-3xl font-semibold text-accent">
+                <span className="font-display text-3xl font-semibold text-primary">
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <h3 className="mt-3 text-lg font-semibold">{step.title}</h3>
@@ -112,7 +112,7 @@ export default function ServicesPage() {
               {services.pricing.body}
             </p>
             <div className="mt-6 rounded-2xl bg-muted p-6">
-              <p className="font-display text-2xl font-semibold text-accent">
+              <p className="font-display text-2xl font-semibold text-primary">
                 {services.pricing.fromPrice}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -133,7 +133,7 @@ export default function ServicesPage() {
               <details key={item.question} className="group px-6 py-5">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left text-base font-semibold">
                   {item.question}
-                  <span className="shrink-0 text-accent transition-transform group-open:rotate-45">
+                  <span className="shrink-0 text-primary transition-transform group-open:rotate-45">
                     +
                   </span>
                 </summary>
@@ -154,7 +154,7 @@ export default function ServicesPage() {
           <div className="mt-8 flex justify-center">
             <Link
               href="/book"
-              className="inline-flex items-center rounded-full bg-accent px-6 py-3 text-base font-semibold text-accent-foreground transition-opacity hover:opacity-90"
+              className="inline-flex items-center rounded-full bg-primary px-6 py-3 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
             >
               Book Now
             </Link>

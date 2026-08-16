@@ -33,7 +33,7 @@ export default function HomePage() {
           <div className="mt-8 flex flex-wrap gap-4">
             <Link
               href={home.hero.primaryCta.href}
-              className="inline-flex items-center rounded-full bg-accent px-6 py-3 text-base font-semibold text-accent-foreground transition-opacity hover:opacity-90"
+              className="inline-flex items-center rounded-full bg-primary px-6 py-3 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
             >
               {home.hero.primaryCta.label}
             </Link>
@@ -60,7 +60,7 @@ export default function HomePage() {
             </p>
             <Link
               href={home.intro.cta.href}
-              className="mt-6 inline-flex items-center text-sm font-semibold text-accent underline-offset-4 hover:underline"
+              className="mt-6 inline-flex items-center text-sm font-semibold text-primary underline-offset-4 hover:underline"
             >
               {home.intro.cta.label} →
             </Link>
@@ -123,7 +123,7 @@ export default function HomePage() {
           <div className="mt-8 flex justify-center">
             <Link
               href={home.ctaBand.primaryCta.href}
-              className="inline-flex items-center rounded-full bg-accent px-6 py-3 text-base font-semibold text-accent-foreground transition-opacity hover:opacity-90"
+              className="inline-flex items-center rounded-full bg-primary px-6 py-3 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
             >
               {home.ctaBand.primaryCta.label}
             </Link>
