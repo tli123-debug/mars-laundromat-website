@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { bookingSchema, type BookingInput } from "@/lib/validations/booking-schema";
+import { sendBookingNotification } from "@/lib/email/send-booking-notification";
 
 type ActionResult = { status: "success" | "error"; message: string };
 
@@ -44,9 +45,14 @@ export async function createBooking(input: BookingInput): Promise<ActionResult> 
     };
   }
 
-  // Email notification (Resend) lands in Phase 4, using bookingId + parsed.data.
-  // The booking being durably saved is the success condition for the user —
-  // nothing else to do here yet.
+  // Booking is durably saved — that's the success condition for the user.
+  // Email is best-effort only; a Resend hiccup must never surface as a
+  // failure here, since the booking itself already succeeded.
+  try {
+    await sendBookingNotification({ bookingId, booking: parsed.data });
+  } catch (emailError) {
+    console.error(`Booking ${bookingId}: notification email failed`, emailError);
+  }
 
   return {
     status: "success",
