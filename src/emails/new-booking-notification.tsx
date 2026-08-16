@@ -10,8 +10,7 @@ import {
   Row,
   Text,
 } from "@react-email/components";
-import { TIME_WINDOW_LABELS } from "@/lib/validations/booking-schema";
-import type { TimeWindow } from "@/types/database.types";
+import { timeSlotLabel } from "@/lib/validations/booking-schema";
 
 interface NewBookingNotificationProps {
   bookingId: string;
@@ -19,9 +18,9 @@ interface NewBookingNotificationProps {
   phone: string;
   address: string;
   preferredPickupDate: string;
-  preferredPickupWindow: TimeWindow;
+  preferredPickupTime: string;
   preferredDeliveryDate?: string | null;
-  preferredDeliveryWindow?: TimeWindow | null;
+  preferredDeliveryTime?: string | null;
   specialInstructions?: string | null;
 }
 
@@ -31,9 +30,9 @@ export default function NewBookingNotification({
   phone,
   address,
   preferredPickupDate,
-  preferredPickupWindow,
+  preferredPickupTime,
   preferredDeliveryDate,
-  preferredDeliveryWindow,
+  preferredDeliveryTime,
   specialInstructions,
 }: NewBookingNotificationProps) {
   return (
@@ -65,13 +64,13 @@ export default function NewBookingNotification({
                 <strong>Address:</strong> {address}
               </Text>
               <Text style={{ margin: "4px 0" }}>
-                <strong>Preferred pickup:</strong> {preferredPickupDate} (
-                {TIME_WINDOW_LABELS[preferredPickupWindow]})
+                <strong>Preferred pickup:</strong> {preferredPickupDate} at{" "}
+                {timeSlotLabel(preferredPickupTime)}
               </Text>
-              {preferredDeliveryDate && preferredDeliveryWindow && (
+              {preferredDeliveryDate && preferredDeliveryTime && (
                 <Text style={{ margin: "4px 0" }}>
-                  <strong>Preferred delivery:</strong> {preferredDeliveryDate} (
-                  {TIME_WINDOW_LABELS[preferredDeliveryWindow]})
+                  <strong>Preferred delivery:</strong> {preferredDeliveryDate} at{" "}
+                  {timeSlotLabel(preferredDeliveryTime)}
                 </Text>
               )}
               {specialInstructions && (

@@ -1,11 +1,11 @@
 /**
- * Hand-written to match supabase/migrations/20260817000000_create_bookings_table.sql.
+ * Hand-written to match supabase/migrations/20260817000000_create_bookings_table.sql
+ * and 20260819000000_pickup_delivery_windows_to_times.sql.
  * If the schema changes, update this alongside the migration (or regenerate via
  * `npx supabase gen types typescript --linked --schema public` once the project is CLI-linked).
  */
 
 export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
-export type TimeWindow = "morning" | "afternoon" | "evening";
 
 export interface Database {
   public: {
@@ -19,9 +19,9 @@ export interface Database {
           phone: string;
           address: string;
           preferred_pickup_date: string;
-          preferred_pickup_window: TimeWindow;
+          preferred_pickup_time: string;
           preferred_delivery_date: string | null;
-          preferred_delivery_window: TimeWindow | null;
+          preferred_delivery_time: string | null;
           special_instructions: string | null;
           status: BookingStatus;
           admin_notes: string | null;
@@ -34,9 +34,9 @@ export interface Database {
           phone: string;
           address: string;
           preferred_pickup_date: string;
-          preferred_pickup_window: TimeWindow;
+          preferred_pickup_time: string;
           preferred_delivery_date?: string | null;
-          preferred_delivery_window?: TimeWindow | null;
+          preferred_delivery_time?: string | null;
           special_instructions?: string | null;
           status?: BookingStatus;
           admin_notes?: string | null;
@@ -49,9 +49,9 @@ export interface Database {
           phone?: string;
           address?: string;
           preferred_pickup_date?: string;
-          preferred_pickup_window?: TimeWindow;
+          preferred_pickup_time?: string;
           preferred_delivery_date?: string | null;
-          preferred_delivery_window?: TimeWindow | null;
+          preferred_delivery_time?: string | null;
           special_instructions?: string | null;
           status?: BookingStatus;
           admin_notes?: string | null;

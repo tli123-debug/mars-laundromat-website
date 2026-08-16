@@ -18,8 +18,7 @@ import {
 import {
   bookingSchema,
   bookingFormDefaults,
-  TIME_WINDOWS,
-  TIME_WINDOW_LABELS,
+  TIME_SLOTS,
   type BookingInput,
 } from "@/lib/validations/booking-schema";
 import { createBooking } from "@/app/(site)/book/actions";
@@ -100,31 +99,31 @@ export function BookingForm() {
           )}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="preferredPickupWindow">Preferred pickup window</Label>
+          <Label htmlFor="preferredPickupTime">Preferred pickup time</Label>
           <Controller
             control={control}
-            name="preferredPickupWindow"
+            name="preferredPickupTime"
             render={({ field }) => (
               <Select
                 key={selectResetKey}
                 value={field.value}
                 onValueChange={field.onChange}
               >
-                <SelectTrigger id="preferredPickupWindow" className="w-full">
-                  <SelectValue placeholder="Choose a window" />
+                <SelectTrigger id="preferredPickupTime" className="w-full">
+                  <SelectValue placeholder="Choose a time" />
                 </SelectTrigger>
                 <SelectContent>
-                  {TIME_WINDOWS.map((window) => (
-                    <SelectItem key={window} value={window}>
-                      {TIME_WINDOW_LABELS[window]}
+                  {TIME_SLOTS.map((slot) => (
+                    <SelectItem key={slot.value} value={slot.value}>
+                      {slot.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
           />
-          {errors.preferredPickupWindow && (
-            <p className="text-sm text-destructive">{errors.preferredPickupWindow.message}</p>
+          {errors.preferredPickupTime && (
+            <p className="text-sm text-destructive">{errors.preferredPickupTime.message}</p>
           )}
         </div>
       </div>
@@ -135,23 +134,23 @@ export function BookingForm() {
           <Input id="preferredDeliveryDate" type="date" {...register("preferredDeliveryDate")} />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="preferredDeliveryWindow">Preferred delivery window (optional)</Label>
+          <Label htmlFor="preferredDeliveryTime">Preferred delivery time (optional)</Label>
           <Controller
             control={control}
-            name="preferredDeliveryWindow"
+            name="preferredDeliveryTime"
             render={({ field }) => (
               <Select
                 key={selectResetKey}
                 value={field.value || undefined}
                 onValueChange={field.onChange}
               >
-                <SelectTrigger id="preferredDeliveryWindow" className="w-full">
-                  <SelectValue placeholder="Choose a window" />
+                <SelectTrigger id="preferredDeliveryTime" className="w-full">
+                  <SelectValue placeholder="Choose a time" />
                 </SelectTrigger>
                 <SelectContent>
-                  {TIME_WINDOWS.map((window) => (
-                    <SelectItem key={window} value={window}>
-                      {TIME_WINDOW_LABELS[window]}
+                  {TIME_SLOTS.map((slot) => (
+                    <SelectItem key={slot.value} value={slot.value}>
+                      {slot.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

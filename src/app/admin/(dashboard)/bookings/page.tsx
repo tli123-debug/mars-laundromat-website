@@ -8,8 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TIME_WINDOW_LABELS } from "@/lib/validations/booking-schema";
-import type { TimeWindow } from "@/types/database.types";
+import { timeSlotLabel } from "@/lib/validations/booking-schema";
 import { StatusSelect } from "./status-select";
 
 function formatDate(dateStr: string | null) {
@@ -19,10 +18,6 @@ function formatDate(dateStr: string | null) {
     month: "short",
     day: "numeric",
   });
-}
-
-function windowLabel(window: TimeWindow | null) {
-  return window ? TIME_WINDOW_LABELS[window] : null;
 }
 
 export default async function AdminBookingsPage() {
@@ -82,7 +77,7 @@ export default async function AdminBookingsPage() {
                 <TableCell>
                   <div>{formatDate(booking.preferred_pickup_date)}</div>
                   <div className="text-sm text-muted-foreground">
-                    {windowLabel(booking.preferred_pickup_window)}
+                    {timeSlotLabel(booking.preferred_pickup_time)}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -90,7 +85,7 @@ export default async function AdminBookingsPage() {
                     <>
                       <div>{formatDate(booking.preferred_delivery_date)}</div>
                       <div className="text-sm text-muted-foreground">
-                        {windowLabel(booking.preferred_delivery_window)}
+                        {timeSlotLabel(booking.preferred_delivery_time)}
                       </div>
                     </>
                   ) : (

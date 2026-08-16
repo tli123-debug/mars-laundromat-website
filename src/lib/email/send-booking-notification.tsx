@@ -25,9 +25,9 @@ export async function sendBookingNotification({
         phone={booking.phone}
         address={booking.address}
         preferredPickupDate={booking.preferredPickupDate}
-        preferredPickupWindow={booking.preferredPickupWindow}
+        preferredPickupTime={booking.preferredPickupTime}
         preferredDeliveryDate={booking.preferredDeliveryDate || null}
-        preferredDeliveryWindow={booking.preferredDeliveryWindow || null}
+        preferredDeliveryTime={booking.preferredDeliveryTime || null}
         specialInstructions={booking.specialInstructions || null}
       />
     ),

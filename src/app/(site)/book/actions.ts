@@ -31,9 +31,9 @@ export async function createBooking(input: BookingInput): Promise<ActionResult> 
     phone: parsed.data.phone,
     address: parsed.data.address,
     preferred_pickup_date: parsed.data.preferredPickupDate,
-    preferred_pickup_window: parsed.data.preferredPickupWindow,
+    preferred_pickup_time: parsed.data.preferredPickupTime,
     preferred_delivery_date: parsed.data.preferredDeliveryDate || null,
-    preferred_delivery_window: parsed.data.preferredDeliveryWindow || null,
+    preferred_delivery_time: parsed.data.preferredDeliveryTime || null,
     special_instructions: parsed.data.specialInstructions || null,
   });
 
