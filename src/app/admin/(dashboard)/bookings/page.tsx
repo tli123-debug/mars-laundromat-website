@@ -97,8 +97,8 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
               <TableHead>Status</TableHead>
               <TableHead>Paid</TableHead>
               <TableHead>Customer</TableHead>
-              <TableHead>Pickup</TableHead>
-              <TableHead>Delivery</TableHead>
+              <TableHead>Pickup 取件</TableHead>
+              <TableHead>Delivery 送件</TableHead>
               <TableHead>Notes</TableHead>
               <TableHead>Requested</TableHead>
             </TableRow>
@@ -143,9 +143,14 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
                   )}
                 </TableCell>
                 <TableCell className="max-w-[220px] whitespace-normal break-words">
-                  <span className="text-sm text-muted-foreground">
+                  <span className="block text-sm text-muted-foreground">
                     {booking.special_instructions || "—"}
                   </span>
+                  {booking.special_instructions_zh && (
+                    <span className="mt-1 block text-sm text-muted-foreground/80">
+                      {booking.special_instructions_zh}
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {new Date(booking.created_at).toLocaleDateString("en-US", {

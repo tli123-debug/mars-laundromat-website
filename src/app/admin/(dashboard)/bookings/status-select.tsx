@@ -13,10 +13,10 @@ import type { BookingStatus } from "@/types/database.types";
 import { updateBookingStatus } from "./actions";
 
 const STATUS_OPTIONS: { value: BookingStatus; label: string }[] = [
-  { value: "pending", label: "Pending" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
+  { value: "pending", label: "Pending 待处理" },
+  { value: "confirmed", label: "Confirmed 已确认" },
+  { value: "completed", label: "Completed 已完成" },
+  { value: "cancelled", label: "Cancelled 已取消" },
 ];
 
 export function StatusSelect({
@@ -41,7 +41,7 @@ export function StatusSelect({
 
   return (
     <Select value={status} onValueChange={handleChange} disabled={isPending}>
-      <SelectTrigger size="sm" className="w-[130px]">
+      <SelectTrigger size="sm" className="w-[180px]">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

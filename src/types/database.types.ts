@@ -1,7 +1,8 @@
 /**
  * Hand-written to match supabase/migrations/20260817000000_create_bookings_table.sql,
- * 20260819000000_pickup_delivery_windows_to_times.sql, and
- * 20260820000000_add_paid_to_bookings.sql.
+ * 20260819000000_pickup_delivery_windows_to_times.sql,
+ * 20260820000000_add_paid_to_bookings.sql, and
+ * 20260821000000_add_special_instructions_zh_to_bookings.sql.
  * If the schema changes, update this alongside the migration (or regenerate via
  * `npx supabase gen types typescript --linked --schema public` once the project is CLI-linked).
  */
@@ -24,6 +25,7 @@ export interface Database {
           preferred_delivery_date: string | null;
           preferred_delivery_time: string | null;
           special_instructions: string | null;
+          special_instructions_zh: string | null;
           status: BookingStatus;
           admin_notes: string | null;
           paid: boolean;
@@ -40,6 +42,7 @@ export interface Database {
           preferred_delivery_date?: string | null;
           preferred_delivery_time?: string | null;
           special_instructions?: string | null;
+          special_instructions_zh?: string | null;
           status?: BookingStatus;
           admin_notes?: string | null;
           paid?: boolean;
@@ -56,6 +59,7 @@ export interface Database {
           preferred_delivery_date?: string | null;
           preferred_delivery_time?: string | null;
           special_instructions?: string | null;
+          special_instructions_zh?: string | null;
           status?: BookingStatus;
           admin_notes?: string | null;
           paid?: boolean;

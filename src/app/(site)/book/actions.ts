@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { bookingSchema, type BookingInput } from "@/lib/validations/booking-schema";
 import { sendBookingNotification } from "@/lib/email/send-booking-notification";
+import { translateToChinese } from "@/lib/translate/translate-to-chinese";
 
 type ActionResult = { status: "success" | "error"; message: string };
 
@@ -24,6 +25,19 @@ export async function createBooking(input: BookingInput): Promise<ActionResult> 
   // which fails the whole insert with a misleading RLS-violation error.
   const bookingId = crypto.randomUUID();
 
+  // Best-effort, same as the notification email below — a translation
+  // hiccup must never block the booking itself, so this is folded into the
+  // single insert (anon can only INSERT, not a follow-up UPDATE) with a
+  // null fallback on failure.
+  let specialInstructionsZh: string | null = null;
+  if (parsed.data.specialInstructions) {
+    try {
+      specialInstructionsZh = await translateToChinese(parsed.data.specialInstructions);
+    } catch (translateError) {
+      console.error(`Booking ${bookingId}: translation failed`, translateError);
+    }
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.from("bookings").insert({
     id: bookingId,
@@ -35,6 +49,7 @@ export async function createBooking(input: BookingInput): Promise<ActionResult> 
     preferred_delivery_date: parsed.data.preferredDeliveryDate || null,
     preferred_delivery_time: parsed.data.preferredDeliveryTime || null,
     special_instructions: parsed.data.specialInstructions || null,
+    special_instructions_zh: specialInstructionsZh,
   });
 
   if (error) {
