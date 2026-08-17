@@ -9,23 +9,16 @@ type FeaturedReview = {
  * third-party widget (recurring cost, limited theme control). See chat for
  * the reasoning.
  *
- * `rating` is still a PLACEHOLDER — confirm the real current aggregate rating
- * from the Google Business Profile (27 total reviews, 2 negative, so it's
- * likely not a clean 5.0). `featured` quotes below are real, copied from
- * Google as of 2026-08-17.
+ * rating/reviewCount as of 2026-08-19 — these drift over time and aren't
+ * live-fetched, so revisit periodically rather than assuming they stay accurate.
  */
 export const googleReviews = {
-  rating: 5.0,
-  reviewCount: 27,
+  rating: 4.8,
+  reviewCount: 28,
 
-  /**
-   * PLACEHOLDER — swap for the direct "write a review" deep link once you
-   * have the Place ID: https://search.google.com/local/writereview?placeid=...
-   * (grab it free from Google's Place ID Finder, no API key needed). Until
-   * then this just opens the Maps listing.
-   */
+  // Place ID: ChIJHyr0Pv1awokRGuD5XNAJe9c (450 6th Ave, Brooklyn, NY 11215)
   writeReviewHref:
-    "https://www.google.com/maps/search/?api=1&query=Mars+Laundromat+450+6th+Ave+Brooklyn+NY",
+    "https://search.google.com/local/writereview?placeid=ChIJHyr0Pv1awokRGuD5XNAJe9c",
 
   featured: [
     {
