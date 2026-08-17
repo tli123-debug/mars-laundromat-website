@@ -1,6 +1,20 @@
 import { Star } from "lucide-react";
 import { googleReviews } from "@/content/reviews";
 
+function GoogleWordmark() {
+  return (
+    <span className="text-base font-semibold">
+      <span className="text-[#4285F4]">G</span>
+      <span className="text-[#EA4335]">o</span>
+      <span className="text-[#FBBC05]">o</span>
+      <span className="text-[#4285F4]">g</span>
+      <span className="text-[#34A853]">l</span>
+      <span className="text-[#EA4335]">e</span>
+      <span className="text-foreground"> Reviews</span>
+    </span>
+  );
+}
+
 function StarRating({ rating }: { rating: number }) {
   return (
     <div className="flex gap-0.5" role="img" aria-label={`${rating} out of 5 stars`}>
@@ -28,9 +42,7 @@ export function GoogleReviews() {
 
       <div className="mt-10 flex flex-col gap-4 rounded-2xl bg-muted p-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-            Google Reviews
-          </span>
+          <GoogleWordmark />
           <span className="font-display text-2xl font-semibold">
             {googleReviews.rating.toFixed(1)}
           </span>
