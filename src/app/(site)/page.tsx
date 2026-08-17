@@ -3,6 +3,7 @@ import Link from "next/link";
 import { home } from "@/content/home";
 import { images } from "@/content/images";
 import { whatsappHref } from "@/content/site-config";
+import { GoogleReviews } from "@/components/home/google-reviews";
 
 export default function HomePage() {
   return (
@@ -113,6 +114,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <GoogleReviews />
 
       <section className="border-t border-border bg-foreground py-20 text-background">
         <div className="mx-auto max-w-3xl px-6 text-center">
