@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import { timeSlotLabel } from "@/lib/validations/booking-schema";
 import { StatusSelect } from "./status-select";
+import { PaidCheckbox } from "./paid-checkbox";
 
 function formatDate(dateStr: string | null) {
   if (!dateStr) return null;
@@ -49,6 +50,7 @@ export default async function AdminBookingsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Status</TableHead>
+              <TableHead>Paid</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Pickup</TableHead>
               <TableHead>Delivery</TableHead>
@@ -59,7 +61,7 @@ export default async function AdminBookingsPage() {
           <TableBody>
             {bookings.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   No bookings yet.
                 </TableCell>
               </TableRow>
@@ -68,6 +70,9 @@ export default async function AdminBookingsPage() {
               <TableRow key={booking.id}>
                 <TableCell>
                   <StatusSelect bookingId={booking.id} status={booking.status} />
+                </TableCell>
+                <TableCell>
+                  <PaidCheckbox bookingId={booking.id} paid={booking.paid} />
                 </TableCell>
                 <TableCell>
                   <div className="font-medium">{booking.name}</div>

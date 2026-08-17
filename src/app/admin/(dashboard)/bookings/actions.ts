@@ -28,3 +28,21 @@ export async function updateBookingStatus(bookingId: string, status: BookingStat
   revalidatePath("/admin/bookings");
   return { error: null };
 }
+
+export async function updateBookingPaid(bookingId: string, paid: boolean) {
+  await requireAdmin();
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("bookings")
+    .update({ paid })
+    .eq("id", bookingId);
+
+  if (error) {
+    console.error("Paid update failed:", error);
+    return { error: "Something went wrong updating that booking." };
+  }
+
+  revalidatePath("/admin/bookings");
+  return { error: null };
+}
