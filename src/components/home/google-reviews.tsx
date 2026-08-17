@@ -54,7 +54,7 @@ export function GoogleReviews() {
           <div key={i} className="rounded-2xl border border-border bg-background p-6">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold">
-                {review.name.charAt(0)}
+                {review.name.charAt(0).toUpperCase()}
               </div>
               <div>
                 <p className="text-sm font-semibold">{review.name}</p>
