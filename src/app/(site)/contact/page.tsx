@@ -4,7 +4,7 @@ import { contact } from "@/content/contact";
 import { fullAddress, siteConfig, whatsappHref } from "@/content/site-config";
 
 export const metadata: Metadata = {
-  title: "Contact | Mars Laundromat",
+  title: "Contact",
   description:
     "Reach Mars Laundromat on WhatsApp, or find our address and hours in Park Slope, Brooklyn.",
 };

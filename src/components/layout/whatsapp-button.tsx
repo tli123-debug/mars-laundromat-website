@@ -1,6 +1,18 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import { whatsappHref } from "@/content/site-config";
 
 export function WhatsAppButton() {
+  const pathname = usePathname();
+
+  // The booking form has its own submit button in the same bottom-right
+  // corner on mobile — the floating bubble visually overlaps it when scrolled
+  // partway down, so it's suppressed on that page.
+  if (pathname.startsWith("/book")) {
+    return null;
+  }
+
   return (
     <a
       href={whatsappHref("Hi! I'd like to ask about laundry pickup & delivery.")}

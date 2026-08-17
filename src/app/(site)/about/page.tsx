@@ -5,7 +5,7 @@ import { about } from "@/content/about";
 import { images } from "@/content/images";
 
 export const metadata: Metadata = {
-  title: "About Us | Mars Laundromat",
+  title: "About Us",
   description:
     "Mars Laundromat is a family-owned, immigrant-owned laundromat rooted in Park Slope, Brooklyn.",
 };

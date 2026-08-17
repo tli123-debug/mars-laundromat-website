@@ -7,7 +7,7 @@ import { images } from "@/content/images";
 import { siteConfig } from "@/content/site-config";
 
 export const metadata: Metadata = {
-  title: "Services | Mars Laundromat",
+  title: "Services",
   description:
     "Wash & fold drop-off and free pickup & delivery across Park Slope, Brooklyn.",
 };

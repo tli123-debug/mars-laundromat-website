@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { BookingForm } from "@/components/booking/booking-form";
 
 export const metadata: Metadata = {
-  title: "Book Now | Mars Laundromat",
+  title: "Book Now",
   description: "Schedule a wash & fold pickup and delivery in Park Slope, Brooklyn.",
 };
 

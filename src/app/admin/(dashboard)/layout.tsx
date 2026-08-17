@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { Button } from "@/components/ui/button";
 import { signOut } from "./actions";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function AdminDashboardLayout({
   children,
