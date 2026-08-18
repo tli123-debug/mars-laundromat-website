@@ -10,7 +10,7 @@ export const siteConfig = {
 
   /** PLACEHOLDER — swap for the real street address before launch. */
   address: {
-    line1: "450 6th Avenue",
+    line1: "450 6th Ave",
     neighborhood: "Park Slope",
     city: "Brooklyn",
     state: "NY",
