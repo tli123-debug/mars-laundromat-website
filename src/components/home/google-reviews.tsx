@@ -35,7 +35,7 @@ function StarRating({ rating }: { rating: number }) {
 
 export function GoogleReviews() {
   return (
-    <section className="mx-auto max-w-6xl px-6 py-20">
+    <section className="mx-auto max-w-6xl px-6 pt-12 pb-20 sm:pt-20">
       <h2 className="text-center font-display text-3xl font-semibold sm:text-4xl">
         What our customers say
       </h2>

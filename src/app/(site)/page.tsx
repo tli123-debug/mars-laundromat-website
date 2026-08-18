@@ -97,7 +97,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 py-20">
+      <section className="mx-auto max-w-6xl px-6 pt-20 pb-12 sm:pb-20">
         <div className="relative aspect-[16/9] overflow-hidden rounded-2xl">
           <Image
             src={images.gardenExterior.src}
