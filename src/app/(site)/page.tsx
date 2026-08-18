@@ -18,20 +18,21 @@ export default function HomePage() {
             sizes="100vw"
             className="object-cover object-[center_25%]"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/30 to-foreground/10" />
+          <div className="absolute inset-0 bg-foreground/45 sm:bg-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-foreground/75 via-foreground/35 to-foreground/10" />
         </div>
 
-        <div className="relative mx-auto flex min-h-[26rem] max-w-6xl flex-col justify-end px-6 py-12 sm:min-h-[38rem] sm:py-16">
+        <div className="relative mx-auto flex min-h-[26rem] max-w-6xl flex-col justify-end px-6 pb-8 pt-12 sm:min-h-[38rem] sm:py-16">
           <p className="text-sm font-semibold uppercase tracking-widest text-white/80">
             {home.hero.eyebrow}
           </p>
-          <h1 className="mt-4 max-w-2xl font-display text-4xl font-semibold leading-tight text-white sm:text-5xl md:text-6xl">
+          <h1 className="mt-2 max-w-2xl font-display text-4xl font-semibold leading-tight text-white sm:mt-4 sm:text-5xl md:text-6xl">
             {home.hero.headline}
           </h1>
-          <p className="mt-5 max-w-xl text-lg text-white/90">
+          <p className="mt-3 max-w-xl text-lg text-white/90 sm:mt-5">
             {home.hero.subheadline}
           </p>
-          <div className="mt-8 flex flex-wrap gap-4">
+          <div className="mt-5 flex flex-wrap gap-4 sm:mt-8">
             <Link
               href={home.hero.primaryCta.href}
               className="inline-flex items-center rounded-full bg-primary px-6 py-3 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
@@ -103,7 +104,7 @@ export default function HomePage() {
             alt={images.gardenExterior.alt}
             fill
             sizes="100vw"
-            className="object-cover"
+            className="scale-[1.03] -rotate-[0.75deg] object-cover"
           />
           <div className="absolute inset-0 flex items-end bg-gradient-to-t from-foreground/70 to-transparent p-8 sm:p-10">
             <p className="max-w-md font-display text-xl text-white sm:text-2xl">
