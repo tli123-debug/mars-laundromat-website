@@ -9,14 +9,14 @@ export const home = {
   },
 
   intro: {
-    heading: "A neighborhood laundromat, run by an actual neighborhood family.",
-    body: "Mars Laundromat has been part of Park Slope's daily rhythm for years — the kind of place where the person answering the phone actually knows your order, your building, and probably your dog's name. We built our pickup & delivery service to bring that same personal care to your door, without losing the parts that make a local laundromat worth walking to in the first place.",
+    heading: "A neighborhood laundromat, run by Park Slope locals.",
+    body: "Mars Laundromat has been serving Park Slope for many years, the kind of place where the person answering the phone actually knows your order, your building, and probably your dog's name. We built our pickup & delivery service to bring that same personal care to your door, without losing the parts that make a local laundromat worth walking to in the first place.",
     cta: { label: "Our story", href: "/about" },
   },
 
   valueProps: [
     {
-      title: "Run by a family, not an app",
+      title: "Family-owned, not an app",
       description:
         "No call center, no gig workforce. Every bag is handled by people who live in this neighborhood and take pride in the work.",
     },
