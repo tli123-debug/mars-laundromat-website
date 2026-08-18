@@ -26,7 +26,7 @@ export default function ContactPage() {
 
       <section className="mx-auto max-w-5xl px-6 py-16">
         <div className="grid gap-8 sm:grid-cols-2">
-          <div className="rounded-2xl bg-primary/10 p-8">
+          <div className="rounded-2xl bg-[#25D366]/10 p-8">
             <h2 className="font-display text-2xl font-semibold">
               {contact.phone.heading}
             </h2>
@@ -35,7 +35,7 @@ export default function ContactPage() {
             </p>
             <a
               href={phoneHref()}
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#25D366] px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
               {contact.phone.cta.label} — {siteConfig.phoneNumber}
             </a>

@@ -16,12 +16,12 @@ export default function HomePage() {
             fill
             priority
             sizes="100vw"
-            className="object-cover"
+            className="object-cover object-[center_25%]"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/30 to-foreground/10" />
         </div>
 
-        <div className="relative mx-auto flex min-h-[32rem] max-w-6xl flex-col justify-end px-6 py-16 sm:min-h-[38rem]">
+        <div className="relative mx-auto flex min-h-[26rem] max-w-6xl flex-col justify-end px-6 py-12 sm:min-h-[38rem] sm:py-16">
           <p className="text-sm font-semibold uppercase tracking-widest text-white/80">
             {home.hero.eyebrow}
           </p>

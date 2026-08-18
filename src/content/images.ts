@@ -16,11 +16,11 @@ function placeholder(width: number, height: number, label: string): string {
 
 export const images = {
   heroHome: {
-    src: placeholder(1600, 900, "Mars Laundromat — Storefront"),
+    src: "/images/storefront.jpg",
     alt: "The storefront of Mars Laundromat on a sunny Park Slope street",
   },
   gardenExterior: {
-    src: placeholder(1200, 900, "The Garden Out Front"),
+    src: "/images/garden-exterior.webp",
     alt: "The garden maintained outside Mars Laundromat, tended by a family friend",
   },
   familyOwners: {
@@ -28,8 +28,8 @@ export const images = {
     alt: "The family who owns and runs Mars Laundromat",
   },
   washAndFold: {
-    src: placeholder(1200, 900, "Wash & Fold"),
-    alt: "Freshly washed and folded laundry, ready for pickup",
+    src: "/images/interior.jpg",
+    alt: "Rows of washers and dryers inside Mars Laundromat",
   },
   pickupDelivery: {
     src: placeholder(1200, 900, "Pickup & Delivery"),
