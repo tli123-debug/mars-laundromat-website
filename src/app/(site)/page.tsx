@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { home } from "@/content/home";
 import { images } from "@/content/images";
-import { whatsappHref } from "@/content/site-config";
+import { phoneHref } from "@/content/site-config";
 import { GoogleReviews } from "@/components/home/google-reviews";
 
 export default function HomePage() {
@@ -39,9 +39,7 @@ export default function HomePage() {
               {home.hero.primaryCta.label}
             </Link>
             <a
-              href={whatsappHref("Hi! I'd like to ask about laundry pickup & delivery.")}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={phoneHref()}
               className="inline-flex items-center rounded-full border border-white/60 bg-white/10 px-6 py-3 text-base font-semibold text-white backdrop-blur transition-colors hover:bg-white/20"
             >
               {home.hero.secondaryCta.label}

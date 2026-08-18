@@ -3,12 +3,12 @@ export const contact = {
     eyebrow: "Contact",
     headline: "Talk to a real person.",
     subheadline:
-      "Questions about an order, your coverage area, or just want to say hi? WhatsApp is the fastest way to reach us.",
+      "Questions about an order, your coverage area, or just want to say hi? Give us a call.",
   },
-  whatsapp: {
-    heading: "Message us on WhatsApp",
-    body: "For quick questions, order changes, or same-day requests, WhatsApp is the fastest way to reach the team.",
-    cta: { label: "Open WhatsApp" },
+  phone: {
+    heading: "Give us a call",
+    body: "For quick questions, order changes, or same-day requests, phone is the fastest way to reach the team.",
+    cta: { label: "Call now" },
   },
   visit: {
     heading: "Visit the store",

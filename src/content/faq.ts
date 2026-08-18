@@ -7,12 +7,12 @@ export const faq = [
   {
     question: "What's your coverage area?",
     answer:
-      "We offer free pickup & delivery from 4th Avenue to 8th Avenue, and 1st Street to 20th Street, in Park Slope. Just outside that range? Message us on WhatsApp and ask — we're sometimes able to make it work.",
+      "We offer free pickup & delivery from 4th Avenue to 8th Avenue, and 1st Street to 20th Street, in Park Slope. Just outside that range? Give us a call and ask — we're sometimes able to make it work.",
   },
   {
     question: "What if I'm not home for my delivery window?",
     answer:
-      "Let us know a safe spot to leave your order (like a doorstep or building lobby) in the special instructions when you book, or coordinate a better time with us over WhatsApp.",
+      "Let us know a safe spot to leave your order (like a doorstep or building lobby) in the special instructions when you book, or coordinate a better time with us by phone.",
   },
   {
     question: "How do I pay?",
@@ -27,6 +27,6 @@ export const faq = [
   {
     question: "How far in advance should I book?",
     answer:
-      "As soon as you know your preferred pickup date. We do our best to accommodate short notice too — message us on WhatsApp for same-day requests.",
+      "As soon as you know your preferred pickup date. We do our best to accommodate short notice too — call us for same-day requests.",
   },
 ] as const;

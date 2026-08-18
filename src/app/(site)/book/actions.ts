@@ -56,7 +56,7 @@ export async function createBooking(input: BookingInput): Promise<ActionResult> 
     console.error("Booking insert failed:", error);
     return {
       status: "error",
-      message: "Something went wrong. Please try again or message us on WhatsApp.",
+      message: "Something went wrong. Please try again or give us a call.",
     };
   }
 

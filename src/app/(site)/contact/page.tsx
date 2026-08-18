@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { contact } from "@/content/contact";
-import { fullAddress, siteConfig, whatsappHref } from "@/content/site-config";
+import { fullAddress, phoneHref, siteConfig } from "@/content/site-config";
 
 export const metadata: Metadata = {
   title: "Contact",
   description:
-    "Reach Mars Laundromat on WhatsApp, or find our address and hours in Park Slope, Brooklyn.",
+    "Reach Mars Laundromat by phone, or find our address and hours in Park Slope, Brooklyn.",
 };
 
 export default function ContactPage() {
@@ -26,20 +26,18 @@ export default function ContactPage() {
 
       <section className="mx-auto max-w-5xl px-6 py-16">
         <div className="grid gap-8 sm:grid-cols-2">
-          <div className="rounded-2xl bg-[#25D366]/10 p-8">
+          <div className="rounded-2xl bg-primary/10 p-8">
             <h2 className="font-display text-2xl font-semibold">
-              {contact.whatsapp.heading}
+              {contact.phone.heading}
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              {contact.whatsapp.body}
+              {contact.phone.body}
             </p>
             <a
-              href={whatsappHref("Hi! I have a question about Mars Laundromat.")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#25D366] px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              href={phoneHref()}
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
             >
-              {contact.whatsapp.cta.label} — {siteConfig.whatsappNumber}
+              {contact.phone.cta.label} — {siteConfig.phoneNumber}
             </a>
           </div>
 
@@ -61,7 +59,8 @@ export default function ContactPage() {
                 <dd className="mt-1 space-y-1 text-muted-foreground">
                   {siteConfig.hours.map((entry) => (
                     <div key={entry.days}>
-                      {entry.days}: {entry.time}
+                      <span className="font-semibold text-foreground">{entry.days}:</span>{" "}
+                      {entry.time}
                     </div>
                   ))}
                 </dd>

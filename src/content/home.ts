@@ -5,7 +5,7 @@ export const home = {
     subheadline:
       "Wash & fold drop-off, plus free pickup & delivery across Park Slope. Family-owned, community-rooted, and never run by an app.",
     primaryCta: { label: "Book a Pickup", href: "/book" },
-    secondaryCta: { label: "Message us on WhatsApp", href: "whatsapp" },
+    secondaryCta: { label: "Call us", href: "tel" },
   },
 
   intro: {
@@ -39,7 +39,7 @@ export const home = {
 
   ctaBand: {
     heading: "Ready to get your time back?",
-    body: "Book a pickup in a couple of minutes, or message us on WhatsApp if you'd rather just talk to a person.",
+    body: "Book a pickup in a couple of minutes, or give us a call if you'd rather just talk to a person.",
     primaryCta: { label: "Book Now", href: "/book" },
   },
 } as const;

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { fullAddress, siteConfig, whatsappHref } from "@/content/site-config";
+import { fullAddress, phoneHref, siteConfig } from "@/content/site-config";
 
 const exploreLinks = [
   { label: "Home", href: "/" },
@@ -43,19 +43,15 @@ export function Footer() {
             <h3 className="text-sm font-semibold">Get in touch</h3>
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
               <li>
-                <a
-                  href={whatsappHref()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="transition-colors hover:text-foreground"
-                >
-                  WhatsApp: {siteConfig.whatsappNumber}
+                <a href={phoneHref()} className="transition-colors hover:text-foreground">
+                  {siteConfig.phoneNumber}
                 </a>
               </li>
               <li>{fullAddress()}</li>
               {siteConfig.hours.map((entry) => (
                 <li key={entry.days}>
-                  {entry.days}: {entry.time}
+                  <span className="font-semibold text-foreground">{entry.days}:</span>{" "}
+                  {entry.time}
                 </li>
               ))}
             </ul>

@@ -38,7 +38,7 @@ export const services = {
       },
       {
         title: "We confirm",
-        description: "A real person on our team confirms your pickup time by phone or WhatsApp.",
+        description: "A real person on our team confirms your pickup time by phone.",
       },
       {
         title: "We pick up & wash",
@@ -53,7 +53,7 @@ export const services = {
 
   coverage: {
     heading: "Where we deliver",
-    body: "Our free pickup & delivery service currently covers the heart of Park Slope — from 4th Avenue to 8th Avenue, and 1st Street to 20th Street. Not sure if you're in range? Message us on WhatsApp and we'll let you know.",
+    body: "Our free pickup & delivery service currently covers the heart of Park Slope — from 4th Avenue to 8th Avenue, and 1st Street to 20th Street. Not sure if you're in range? Give us a call and we'll let you know.",
   },
 
   /** PLACEHOLDER — confirm real pricing before launch. */
