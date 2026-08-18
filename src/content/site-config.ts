@@ -5,10 +5,8 @@ export const siteConfig = {
     "A family-owned laundromat serving Park Slope, Brooklyn with wash & fold drop-off and pickup & delivery service.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
 
-  /** PLACEHOLDER — swap for the real business phone number. */
-  phoneNumber: "+1 (718) 555-0199",
+  phoneNumber: "+1 (929) 870-1166",
 
-  /** PLACEHOLDER — swap for the real street address before launch. */
   address: {
     line1: "450 6th Ave",
     neighborhood: "Park Slope",
