@@ -24,7 +24,7 @@ export const images = {
     alt: "The garden maintained outside Mars Laundromat, tended by a family friend",
   },
   familyOwners: {
-    src: placeholder(1200, 900, "The Family Behind the Counter"),
+    src: "/images/family-owners.jpg",
     alt: "The family who owns and runs Mars Laundromat",
   },
   washAndFold: {
