@@ -23,6 +23,10 @@ export const images = {
     src: "/images/garden-exterior.webp",
     alt: "The garden maintained outside Mars Laundromat, tended by a family friend",
   },
+  aboutGarden: {
+    src: "/images/about-garden.webp",
+    alt: "The green awning and garden outside Mars Laundromat, seen from the sidewalk",
+  },
   familyOwners: {
     src: "/images/family-owners.jpg",
     alt: "The family who owns and runs Mars Laundromat",

@@ -53,8 +53,8 @@ export default function AboutPage() {
         <div className="mx-auto grid max-w-6xl gap-10 px-6 md:grid-cols-2 md:items-center md:gap-16">
           <div className="relative aspect-[4/3] overflow-hidden rounded-2xl">
             <Image
-              src={images.gardenExterior.src}
-              alt={images.gardenExterior.alt}
+              src={images.aboutGarden.src}
+              alt={images.aboutGarden.alt}
               fill
               sizes="(min-width: 768px) 40vw, 100vw"
               className="object-cover"
@@ -101,7 +101,7 @@ export default function AboutPage() {
             Come meet us in person
           </h2>
           <p className="mt-4 text-base text-background/80">
-            Or let us come to you — book a pickup and see what neighborhood service feels like.
+            Or let us come to you, book a pickup to experience our local service.
           </p>
           <div className="mt-8 flex justify-center">
             <Link
