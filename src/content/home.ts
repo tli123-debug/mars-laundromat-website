@@ -16,24 +16,24 @@ export const home = {
 
   valueProps: [
     {
-      title: "Family-owned, not an app",
+      title: "Family-owned, not by an app",
       description:
         "No call center, no gig workforce. Every bag is handled by people who live in this neighborhood and take pride in the work.",
     },
     {
       title: "Free pickup & delivery",
       description:
-        "Covering 4th to 8th Ave, 1st to 20th St — right in the heart of Park Slope. Schedule a window that works for you.",
+        "Covering 4th to 8th Ave, 1st to 20th St, right in the heart of Park Slope. Schedule a window that works for you.",
     },
     {
       title: "Careful, consistent wash & fold",
       description:
-        "Your items are washed, dried, and folded to your preferences — every single time, not just when you're watching.",
+        "Your items are washed, dried, and folded to your preferences every single time, all types of special instructions are welcome.",
     },
     {
       title: "A real place you can walk into",
       description:
-        "We're not a warehouse on the edge of town. Stop by, meet us, see the garden out front — we like it that way.",
+        "Stop by, meet us, see the garden out front, and sit on our benches on a nice sunny day.",
     },
   ],
 
