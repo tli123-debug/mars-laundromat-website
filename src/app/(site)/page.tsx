@@ -108,7 +108,7 @@ export default function HomePage() {
           />
           <div className="absolute inset-0 flex items-end bg-gradient-to-t from-foreground/70 to-transparent p-8 sm:p-10">
             <p className="max-w-md font-display text-xl text-white sm:text-2xl">
-              Look for the garden out front — it's how you'll know you're in the right place.
+              Look for the garden out front, it's how you'll know you're in the right place.
             </p>
           </div>
         </div>
