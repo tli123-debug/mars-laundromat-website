@@ -29,8 +29,8 @@ export default function AboutPage() {
         <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-16">
           <div className="relative aspect-[4/3] overflow-hidden rounded-2xl md:order-2">
             <Image
-              src={images.familyOwners.src}
-              alt={images.familyOwners.alt}
+              src={images.aboutStory.src}
+              alt={images.aboutStory.alt}
               fill
               sizes="(min-width: 768px) 40vw, 100vw"
               className="object-cover"

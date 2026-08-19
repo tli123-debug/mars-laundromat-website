@@ -27,6 +27,10 @@ export const images = {
     src: "/images/about-garden.webp",
     alt: "The green awning and garden outside Mars Laundromat, seen from the sidewalk",
   },
+  aboutStory: {
+    src: "/images/about-story-original-awning.jpg",
+    alt: "Mars Laundromat's original red awning storefront, before it was replaced after hurricane damage",
+  },
   familyOwners: {
     src: "/images/family-owners.jpg",
     alt: "The family who owns and runs Mars Laundromat",
