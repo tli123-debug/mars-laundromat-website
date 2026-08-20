@@ -11,18 +11,18 @@ export const about = {
     paragraphs: [
       "Mars Laundromat was founded by a family who came to Brooklyn with very little except a willingness to work hard and a belief that a laundromat could be more than a place you rush in and out of. Years later, that's still the standard we hold ourselves to, every wash, every fold, every delivery.",
       "What we learned throughout the years was that the best part of running a neighborhood laundromat isn't the laundry. It's the people. The regulars who've been coming since the beginning. The families who moved away but still talk about us. The new faces who slowly become familiar ones.",
-      "Many years and memories later, while Park Slope has massively changed around us, one thing hasn't: our dedication to those who walk through that door, and the belief that a laundromat can mean much more than clean clothes.",
+      "Many years and memories later, while Park Slope has massively changed around us, one thing hasn't: our dedication to those who walk through that door, and the belief that a laundromat can mean more than clean clothes.",
     ],
   },
 
   garden: {
     heading: "The garden out front",
-    body: "If you've walked past our storefront, you've probably noticed it before you noticed the sign: a small, thriving garden that's become a little landmark on the block. It's lovingly maintained by a family friend who's been tending it for years, purely because he loves doing it.",
+    body: "If you've walked past our storefront, you've probably noticed it: a small, thriving garden that's become a little landmark on the block. It's lovingly maintained by a family friend who's been tending to it for years, simply because he loves doing it.",
   },
 
   community: {
     heading: "Rooted in the neighborhood",
-    body: "We never had a marketing strategy. It happened because people kept coming back, and kept sending their neighbors our way. That kind of trust can't be manufactured, you just try to deserve it, every single day.",
+    body: "We never had a marketing strategy. It happened because people kept coming back, and kept sending their neighbors our way. We are beyond appreciative of the community that has supported us for so many years, and we continue to do our best to pay it forward.",
   },
 
   values: [
