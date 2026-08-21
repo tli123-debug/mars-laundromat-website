@@ -50,18 +50,23 @@ export default async function AdminTodayPage() {
     unpaid: [],
   };
 
+  const visibleBookingIds = new Set<string>();
   for (const booking of bookings) {
     for (const column of categorizeBooking(booking, today)) {
       grouped[column].push(booking);
+      visibleBookingIds.add(booking.id);
     }
   }
+  // Not bookings.length — a fetched-but-not-cancelled row (e.g. a confirmed
+  // pickup scheduled for a future date) can legitimately categorize to no
+  // column at all, and shouldn't be counted as "shown below."
+  const visibleCount = visibleBookingIds.size;
 
   return (
     <div>
       <h1 className="font-display text-2xl font-semibold">Today 今日概览</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {bookings.length} active booking{bookings.length === 1 ? "" : "s"} across all sections
-        below.
+        {visibleCount} active booking{visibleCount === 1 ? "" : "s"} across all sections below.
       </p>
 
       <div className="mt-8 space-y-10">

@@ -1,5 +1,4 @@
 import { StatusSelect } from "@/app/admin/(dashboard)/bookings/status-select";
-import { PaidCheckbox } from "@/app/admin/(dashboard)/bookings/paid-checkbox";
 import { windowLabel } from "@/lib/validations/booking-schema";
 import { bookingMapsHref, bookingPhoneHref, bookingSmsHref } from "@/lib/booking-links";
 import type { Database } from "@/types/database.types";
@@ -28,6 +27,52 @@ function QuickActionLink({ href, label }: { href: string; label: string }) {
   );
 }
 
+/**
+ * Whether "confirmed" is a real, complete value vs. still-proposed depends on
+ * the booking's status, never on the field merely being non-null — a pending
+ * booking can have confirmed_* set (that's exactly what "Awaiting Customer"
+ * is: a proposed time nobody has accepted yet). Only once status has moved
+ * past "pending" does a set confirmed_* value mean genuinely confirmed.
+ */
+function ProposedOrConfirmedLabel({ status }: { status: BookingRow["status"] }) {
+  return status === "pending" ? <>Proposed 建议</> : <>Confirmed 已确认</>;
+}
+
+function WindowSection({
+  heading,
+  requestedDate,
+  requestedTime,
+  confirmedDate,
+  confirmedTime,
+  status,
+}: {
+  heading: string;
+  requestedDate: string | null;
+  requestedTime: string | null;
+  confirmedDate: string | null;
+  confirmedTime: string | null;
+  status: BookingRow["status"];
+}) {
+  // "Complete" — both fields set, not just one. Guards against inferring
+  // anything from a single non-null field in a partial/unexpected state.
+  const hasConfirmed = Boolean(confirmedDate && confirmedTime);
+
+  return (
+    <div>
+      <div className="text-muted-foreground">{heading}</div>
+      <div>
+        Requested 客户请求: {formatDate(requestedDate)} · {windowLabel(requestedTime)}
+      </div>
+      {hasConfirmed && (
+        <div>
+          <ProposedOrConfirmedLabel status={status} />: {formatDate(confirmedDate)} ·{" "}
+          {windowLabel(confirmedTime)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function BookingCard({ booking }: { booking: BookingRow }) {
   return (
     <div className="rounded-2xl border border-border bg-background p-4">
@@ -39,36 +84,47 @@ export function BookingCard({ booking }: { booking: BookingRow }) {
         </div>
         <div className="flex flex-col items-end gap-2">
           <StatusSelect bookingId={booking.id} status={booking.status} />
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Paid 已付款</span>
-            <PaidCheckbox bookingId={booking.id} paid={booking.paid} />
-          </div>
+          {/* Read-only until Checkpoint 2's atomic Cash/Zelle mechanism replaces
+              the old paid boolean — not wiring up the existing checkbox here
+              rather than exposing a mutation already known to be replaced. */}
+          <span className="text-xs text-muted-foreground">
+            {booking.paid ? "Paid 已付款" : "Unpaid 未付款"}
+          </span>
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-        <div>
-          <div className="text-muted-foreground">
-            Pickup 取件 — {booking.confirmed_pickup_date ? "Confirmed 已确认" : "Proposed 建议"}
-          </div>
-          <div>
-            {formatDate(booking.confirmed_pickup_date ?? booking.preferred_pickup_date)} ·{" "}
-            {windowLabel(booking.confirmed_pickup_time ?? booking.preferred_pickup_time)}
-          </div>
-        </div>
+      <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+        <WindowSection
+          heading="Pickup 取件"
+          requestedDate={booking.preferred_pickup_date}
+          requestedTime={booking.preferred_pickup_time}
+          confirmedDate={booking.confirmed_pickup_date}
+          confirmedTime={booking.confirmed_pickup_time}
+          status={booking.status}
+        />
         {booking.preferred_delivery_date && (
-          <div>
-            <div className="text-muted-foreground">
-              Delivery 送件 —{" "}
-              {booking.confirmed_delivery_date ? "Confirmed 已确认" : "Proposed 建议"}
-            </div>
-            <div>
-              {formatDate(booking.confirmed_delivery_date ?? booking.preferred_delivery_date)} ·{" "}
-              {windowLabel(booking.confirmed_delivery_time ?? booking.preferred_delivery_time)}
-            </div>
-          </div>
+          <WindowSection
+            heading="Delivery 送件"
+            requestedDate={booking.preferred_delivery_date}
+            requestedTime={booking.preferred_delivery_time}
+            confirmedDate={booking.confirmed_delivery_date}
+            confirmedTime={booking.confirmed_delivery_time}
+            status={booking.status}
+          />
         )}
       </div>
+
+      {booking.special_instructions && (
+        <div className="mt-3 text-sm">
+          <span className="text-muted-foreground">Notes 备注: </span>
+          {booking.special_instructions}
+          {booking.special_instructions_zh && (
+            <div className="mt-0.5 text-muted-foreground/80">
+              {booking.special_instructions_zh}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="mt-4 flex flex-wrap gap-2">
         <QuickActionLink href={bookingPhoneHref(booking.phone)} label="Call 打电话" />
