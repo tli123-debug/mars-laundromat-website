@@ -94,12 +94,35 @@ describe("getWindowsForDate — window generation", () => {
   });
 
   it("weekday windows start at 08:00, weekend windows start at 08:30", () => {
+    // Pinned far from real "now" — without this, once real wall-clock time
+    // ever catches up to this hardcoded range, `isToday` would flip true and
+    // the result would start depending on what time of day the test happens
+    // to run (this bit a prior version of this exact test).
+    const now = new Date("2026-12-01T12:00:00Z");
     const start = "2026-08-17";
     for (let i = 0; i < 7; i++) {
       const date = addDays(start, i);
-      const windows = getWindowsForDate(date);
+      const windows = getWindowsForDate(date, { now });
       expect(windows[0].value).toBe(isWeekend(date) ? "08:30" : "08:00");
     }
+  });
+
+  it("excludePast: false includes already-started windows for today (admin backfill)", () => {
+    const now = new Date("2026-08-24T14:15:00Z"); // 10:15 AM EDT
+    const today = getBrooklynToday(now);
+    const windows = getWindowsForDate(today, { now, excludePast: false });
+    // Same first slot as any other date — nothing filtered by clock time.
+    expect(windows[0].value).toBe(isWeekend(today) ? "08:30" : "08:00");
+    expect(windows.some((w) => w.value === "09:00")).toBe(true);
+  });
+
+  it("excludePast defaults to true, matching the existing public-form behavior", () => {
+    const now = new Date("2026-08-24T14:15:00Z"); // 10:15 AM EDT
+    const today = getBrooklynToday(now);
+    const withDefault = getWindowsForDate(today, { now });
+    const withExplicitTrue = getWindowsForDate(today, { now, excludePast: true });
+    expect(withDefault).toEqual(withExplicitTrue);
+    expect(withDefault[0].value).toBe("10:30"); // matches the earlier "already-started" test
   });
 
   it("windows step every 30 minutes and never start after 18:00", () => {

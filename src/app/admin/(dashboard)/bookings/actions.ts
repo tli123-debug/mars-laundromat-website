@@ -5,10 +5,18 @@ import { requireAdmin } from "@/lib/supabase/require-admin";
 import { createClient } from "@/lib/supabase/server";
 import type { BookingStatus } from "@/types/database.types";
 
-const VALID_STATUSES: BookingStatus[] = ["pending", "confirmed", "completed", "cancelled"];
+const VALID_STATUSES: BookingStatus[] = [
+  "pending",
+  "confirmed",
+  "picked_up",
+  "ready_for_delivery",
+  "out_for_delivery",
+  "completed",
+  "cancelled",
+];
 
 export async function updateBookingStatus(bookingId: string, status: BookingStatus) {
-  await requireAdmin();
+  const user = await requireAdmin();
 
   if (!VALID_STATUSES.includes(status)) {
     return { error: "Invalid status." };
@@ -17,7 +25,7 @@ export async function updateBookingStatus(bookingId: string, status: BookingStat
   const supabase = await createClient();
   const { error } = await supabase
     .from("bookings")
-    .update({ status })
+    .update({ status, updated_by: user.id })
     .eq("id", bookingId);
 
   if (error) {
@@ -25,7 +33,9 @@ export async function updateBookingStatus(bookingId: string, status: BookingStat
     return { error: "Something went wrong updating that booking." };
   }
 
+  revalidatePath("/admin/today");
   revalidatePath("/admin/bookings");
+  revalidatePath(`/admin/bookings/${bookingId}`);
   return { error: null };
 }
 

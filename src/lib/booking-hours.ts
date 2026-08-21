@@ -122,14 +122,20 @@ function minutesToValue(totalMinutes: number): string {
  * Every 1-hour window's start time for a given date, every 30 minutes, from
  * store open through the last start that still ends by close (close - 1hr).
  * When dateStr is Brooklyn-today, windows that have already started are
- * excluded.
+ * excluded — unless `excludePast: false`, which admin staff backfilling data
+ * later the same day need (selecting an earlier-today window that's already
+ * passed by clock time), a case the public form correctly forbids by default.
  */
-export function getWindowsForDate(dateStr: string, opts: { now?: Date } = {}): TimeSlot[] {
+export function getWindowsForDate(
+  dateStr: string,
+  opts: { now?: Date; excludePast?: boolean } = {}
+): TimeSlot[] {
   const { openMinutes, closeMinutes } = storeHoursFor(dateStr);
   const lastStart = closeMinutes - WINDOW_DURATION_MINUTES;
   const now = opts.now ?? new Date();
+  const excludePast = opts.excludePast ?? true;
   const isToday = dateStr === getBrooklynToday(now);
-  const nowMinutes = isToday ? getBrooklynNowMinutes(now) : -1;
+  const nowMinutes = isToday && excludePast ? getBrooklynNowMinutes(now) : -1;
 
   const slots: TimeSlot[] = [];
   for (let total = openMinutes; total <= lastStart; total += SLOT_INTERVAL_MINUTES) {
