@@ -106,12 +106,45 @@ alter table public.bookings
   add column created_by uuid references auth.users(id),
   add column updated_by uuid references auth.users(id);
 
--- 7. The missing authenticated INSERT policy. Required before a phone-booking
--- feature can exist at all — today staff cannot create a booking row through
--- the app, only anon can (and only as 'pending'). The three existing policies
--- (anon insert-pending-only, authenticated select, authenticated update) are
--- untouched. No service-role key is introduced anywhere.
+-- 7. RLS: add the missing authenticated INSERT policy (phone bookings), and
+-- tighten the anon INSERT policy. The original policy only constrained
+-- `status = 'pending'` — RLS WITH CHECK doesn't restrict which OTHER columns
+-- an insert can set, so a hand-crafted anon REST call could already set
+-- status='pending' while also smuggling in paid=true, a pre-filled quote, a
+-- confirmed time, etc. The tightened policy locks every staff-only field to
+-- its safe default, so anon can only ever create a brand-new, untouched
+-- pending request — never anything that looks already-processed.
+-- service_speed/contact_preference/sms_consent/sms_consent_at stay publicly
+-- settable, governed only by their own column-level CHECK constraints
+-- (point 3), per product requirements. The existing authenticated
+-- SELECT/UPDATE policies are untouched. No service-role key is introduced
+-- anywhere.
 create policy "authenticated can create bookings"
   on public.bookings for insert to authenticated with check (true);
+
+alter policy "anon can create pending bookings" on public.bookings
+  with check (
+    status = 'pending'
+    and paid = false
+    and booking_source = 'website'
+    and admin_notes is null
+    and confirmed_pickup_date is null
+    and confirmed_pickup_time is null
+    and confirmed_delivery_date is null
+    and confirmed_delivery_time is null
+    and actual_weight_lb is null
+    and billable_weight_lb is null
+    and laundry_charge_cents is null
+    and same_day_fee_cents is null
+    and surcharge_total_cents = 0
+    and surcharge_notes is null
+    and quote_status = 'not_started'
+    and quote_sent_at is null
+    and payment_method is null
+    and paid_at is null
+    and payment_verified_by is null
+    and created_by is null
+    and updated_by is null
+  );
 
 commit;

@@ -19,6 +19,12 @@ begin;
 
 drop policy if exists "authenticated can create bookings" on public.bookings;
 
+-- Must happen before the column drops below: the tightened anon policy
+-- references most of the new columns, and Postgres won't let you drop a
+-- column that's still referenced by an existing policy's WITH CHECK.
+alter policy "anon can create pending bookings" on public.bookings
+  with check (status = 'pending');
+
 -- Status must be remapped BEFORE the constraint is tightened back down, or the
 -- constraint change itself fails outright the moment any real booking has
 -- already progressed into one of the three new statuses.
