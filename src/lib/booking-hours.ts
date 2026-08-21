@@ -90,11 +90,26 @@ export function storeHoursFor(dateStr: string): { openMinutes: number; closeMinu
 }
 
 export function formatClockLabel(totalMinutes: number): string {
-  const hour24 = Math.floor(totalMinutes / 60);
+  // % 24 wraps a start+60 range that lands exactly on/past midnight (e.g. an
+  // 11:30 PM window's end) back to the correct hour-of-day — never hit by
+  // real store hours (last start is 6:00 PM), but rangeLabel()'s start+60
+  // arithmetic makes this a real edge case worth handling correctly anyway.
+  const hour24 = Math.floor(totalMinutes / 60) % 24;
   const minute = totalMinutes % 60;
   const period = hour24 >= 12 ? "PM" : "AM";
   const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
   return `${hour12}:${String(minute).padStart(2, "0")} ${period}`;
+}
+
+/**
+ * A window's full one-hour range, e.g. "8:00 AM–9:00 AM" — a stored time
+ * means "window start," not "the appointment," so the label always shows
+ * the whole hour, never just the start. Exported so booking-schema.ts's
+ * windowLabel() (which formats an already-stored value, not a value being
+ * generated here) can share this exact formatting instead of duplicating it.
+ */
+export function rangeLabel(startMinutes: number): string {
+  return `${formatClockLabel(startMinutes)}–${formatClockLabel(startMinutes + WINDOW_DURATION_MINUTES)}`;
 }
 
 function minutesToValue(totalMinutes: number): string {
@@ -119,7 +134,7 @@ export function getWindowsForDate(dateStr: string, opts: { now?: Date } = {}): T
   const slots: TimeSlot[] = [];
   for (let total = openMinutes; total <= lastStart; total += SLOT_INTERVAL_MINUTES) {
     if (isToday && total <= nowMinutes) continue;
-    slots.push({ value: minutesToValue(total), label: formatClockLabel(total) });
+    slots.push({ value: minutesToValue(total), label: rangeLabel(total) });
   }
   return slots;
 }

@@ -8,6 +8,7 @@ import {
   getWindowsForDate,
   isSameDayEligible,
   isWeekend,
+  rangeLabel,
   storeHoursFor,
   weekdayOf,
 } from "./booking-hours";
@@ -69,7 +70,27 @@ describe("getWindowsForDate — window generation", () => {
     const windows = getWindowsForDate(FAR_FUTURE);
     const last = windows[windows.length - 1];
     expect(last.value).toBe("18:00");
-    expect(last.label).toBe("6:00 PM");
+    expect(last.label).toBe("6:00 PM–7:00 PM");
+  });
+
+  it("every generated label is the complete one-hour range, not just the start", () => {
+    for (const slot of getWindowsForDate(FAR_FUTURE)) {
+      const [startText, endText] = slot.label.split("–");
+      expect(startText).toBeTruthy();
+      expect(endText).toBeTruthy();
+      // The label's start must match formatClockLabel(value) exactly, and the
+      // end must be exactly one hour later — not a truncated or point label.
+      const [hours, minutes] = slot.value.split(":").map(Number);
+      const startMinutes = hours * 60 + minutes;
+      expect(startText).toBe(formatClockLabel(startMinutes));
+      expect(endText).toBe(formatClockLabel(startMinutes + 60));
+    }
+  });
+
+  it("a window spanning noon still shows both AM and PM correctly (11:30 AM-12:30 PM)", () => {
+    const windows = getWindowsForDate(FAR_FUTURE);
+    const noonSpanning = windows.find((w) => w.value === "11:30");
+    expect(noonSpanning?.label).toBe("11:30 AM–12:30 PM");
   });
 
   it("weekday windows start at 08:00, weekend windows start at 08:30", () => {
@@ -110,7 +131,9 @@ describe("getWindowsForDate — window generation", () => {
 describe("getSameDayEligibleWindows / isSameDayEligible — the noon rule", () => {
   it("the eligible set always ends at the 11:00 AM start (11:00 AM-12:00 PM window), never 11:30", () => {
     const windows = getSameDayEligibleWindows("2026-12-01");
-    expect(windows[windows.length - 1].value).toBe("11:00");
+    const last = windows[windows.length - 1];
+    expect(last.value).toBe("11:00");
+    expect(last.label).toBe("11:00 AM–12:00 PM");
     expect(windows.some((w) => w.value === "11:30")).toBe(false);
   });
 
@@ -153,6 +176,18 @@ describe("formatClockLabel", () => {
     expect(formatClockLabel(12 * 60)).toBe("12:00 PM");
     expect(formatClockLabel(9 * 60 + 30)).toBe("9:30 AM");
     expect(formatClockLabel(18 * 60)).toBe("6:00 PM");
+  });
+});
+
+describe("rangeLabel", () => {
+  it("joins the start and start+1hr with an en dash", () => {
+    expect(rangeLabel(8 * 60)).toBe("8:00 AM–9:00 AM");
+    expect(rangeLabel(18 * 60)).toBe("6:00 PM–7:00 PM");
+  });
+
+  it("crosses AM/PM correctly for a window spanning noon or midnight", () => {
+    expect(rangeLabel(11 * 60 + 30)).toBe("11:30 AM–12:30 PM");
+    expect(rangeLabel(23 * 60 + 30)).toBe("11:30 PM–12:30 AM");
   });
 });
 

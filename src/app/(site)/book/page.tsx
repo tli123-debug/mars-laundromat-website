@@ -16,8 +16,8 @@ export default function BookPage() {
         Let&apos;s get your laundry handled.
       </h1>
       <p className="mt-5 text-lg text-muted-foreground">
-        Tell us a bit about your pickup, and we&apos;ll confirm your appointment by
-        phone shortly after.
+        Tell us a bit about your pickup, and we&apos;ll text you shortly to confirm
+        or adjust your requested windows.
       </p>
 
       <div className="mt-10 rounded-2xl border border-border bg-card p-6 sm:p-8">

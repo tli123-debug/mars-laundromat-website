@@ -1,10 +1,10 @@
 import { z } from "zod";
 import {
   addDays,
-  formatClockLabel,
   getBrooklynToday,
   getSameDayEligibleWindows,
   getWindowsForDate,
+  rangeLabel,
   SAME_DAY_DELIVERY_WINDOW_START,
 } from "@/lib/booking-hours";
 
@@ -13,16 +13,18 @@ export type ServiceSpeed = (typeof SERVICE_SPEEDS)[number];
 
 /**
  * Formats a stored window-start value ("HH:MM" or Postgres's "HH:MM:SS") as a
- * one-hour range, e.g. "2:30–3:30 PM" — a stored time now means "window
+ * one-hour range, e.g. "2:30 PM–3:30 PM" — a stored time now means "window
  * start," not "the appointment," so every consumer needs the range, not a
- * single point. Renamed from the old timeSlotLabel() for that reason.
+ * single point. Renamed from the old timeSlotLabel() for that reason. Thin
+ * wrapper around booking-hours.ts's rangeLabel() so the same formatting is
+ * shared between values generated fresh (the public form's dropdowns) and
+ * values read back from storage (the admin dashboard, the notification email).
  */
 export function windowLabel(value: string | null | undefined): string | null {
   if (!value) return null;
   const normalized = value.slice(0, 5);
   const [hours, minutes] = normalized.split(":").map(Number);
-  const startMinutes = hours * 60 + minutes;
-  return `${formatClockLabel(startMinutes)}–${formatClockLabel(startMinutes + 60)}`;
+  return rangeLabel(hours * 60 + minutes);
 }
 
 export const bookingSchema = z

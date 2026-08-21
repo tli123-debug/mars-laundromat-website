@@ -302,7 +302,7 @@ export function BookingForm() {
 
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="grid gap-2">
-          <Label>Delivery date</Label>
+          <Label htmlFor="preferredDeliveryDate">Delivery date</Label>
           {serviceSpeed === "flexible" ? (
             <Controller
               control={control}
@@ -323,7 +323,7 @@ export function BookingForm() {
                   }}
                   disabled={!pickupDate}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger id="preferredDeliveryDate" className="w-full">
                     <SelectValue placeholder="Choose a delivery date" />
                   </SelectTrigger>
                   <SelectContent>
