@@ -7,10 +7,13 @@
  * written from this function's result.
  */
 
-const MINIMUM_BILLABLE_WEIGHT_LB = 10;
-const BASE_CHARGE_CENTS = 1800;
-const PER_POUND_OVER_MINIMUM_CENTS = 100;
-const SAME_DAY_FEE_CENTS = 500;
+// Exported so customer-facing pricing copy (src/content/booking.ts) can
+// reference these numbers directly instead of hardcoding a second copy that
+// could silently drift from the actual formula.
+export const MINIMUM_BILLABLE_WEIGHT_LB = 10;
+export const BASE_CHARGE_CENTS = 1800;
+export const PER_POUND_OVER_MINIMUM_CENTS = 100;
+export const SAME_DAY_FEE_CENTS = 500;
 
 export interface SurchargeLineItem {
   description: string;

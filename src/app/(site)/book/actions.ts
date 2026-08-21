@@ -46,10 +46,15 @@ export async function createBooking(input: BookingInput): Promise<ActionResult> 
     address: parsed.data.address,
     preferred_pickup_date: parsed.data.preferredPickupDate,
     preferred_pickup_time: parsed.data.preferredPickupTime,
-    preferred_delivery_date: parsed.data.preferredDeliveryDate || null,
-    preferred_delivery_time: parsed.data.preferredDeliveryTime || null,
+    preferred_delivery_date: parsed.data.preferredDeliveryDate,
+    preferred_delivery_time: parsed.data.preferredDeliveryTime,
     special_instructions: parsed.data.specialInstructions || null,
     special_instructions_zh: specialInstructionsZh,
+    booking_source: "website",
+    contact_preference: "text",
+    sms_consent: true,
+    sms_consent_at: new Date().toISOString(),
+    service_speed: parsed.data.serviceSpeed,
   });
 
   if (error) {

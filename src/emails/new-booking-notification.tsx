@@ -10,7 +10,13 @@ import {
   Row,
   Text,
 } from "@react-email/components";
-import { timeSlotLabel } from "@/lib/validations/booking-schema";
+import { windowLabel, type ServiceSpeed } from "@/lib/validations/booking-schema";
+
+const SERVICE_SPEED_LABELS: Record<ServiceSpeed, string> = {
+  standard: "Standard Next-Day",
+  flexible: "Flexible 24–48 Hours",
+  same_day: "Same-Day Rush",
+};
 
 interface NewBookingNotificationProps {
   bookingId: string;
@@ -21,6 +27,7 @@ interface NewBookingNotificationProps {
   preferredPickupTime: string;
   preferredDeliveryDate?: string | null;
   preferredDeliveryTime?: string | null;
+  serviceSpeed: ServiceSpeed;
   specialInstructions?: string | null;
 }
 
@@ -33,12 +40,17 @@ export default function NewBookingNotification({
   preferredPickupTime,
   preferredDeliveryDate,
   preferredDeliveryTime,
+  serviceSpeed,
   specialInstructions,
 }: NewBookingNotificationProps) {
+  const isSameDay = serviceSpeed === "same_day";
+
   return (
     <Html>
       <Head />
-      <Preview>New pickup request from {name}</Preview>
+      <Preview>
+        {isSameDay ? "SAME-DAY: " : ""}New pickup request from {name}
+      </Preview>
       <Body style={{ fontFamily: "sans-serif", backgroundColor: "#faf7f2" }}>
         <Container
           style={{
@@ -48,12 +60,32 @@ export default function NewBookingNotification({
             maxWidth: 480,
           }}
         >
+          {isSameDay && (
+            <Text
+              style={{
+                margin: "0 0 16px",
+                padding: "10px 14px",
+                backgroundColor: "#b91c1c",
+                color: "#ffffff",
+                fontWeight: 700,
+                fontSize: 14,
+                letterSpacing: 0.5,
+                borderRadius: 8,
+                textAlign: "center",
+              }}
+            >
+              SAME-DAY REQUEST
+            </Text>
+          )}
           <Heading as="h2" style={{ color: "#2b2622" }}>
             New Booking Request
           </Heading>
           <Hr />
           <Row>
             <Column>
+              <Text style={{ margin: "4px 0" }}>
+                <strong>Service speed:</strong> {SERVICE_SPEED_LABELS[serviceSpeed]}
+              </Text>
               <Text style={{ margin: "4px 0" }}>
                 <strong>Name:</strong> {name}
               </Text>
@@ -64,13 +96,13 @@ export default function NewBookingNotification({
                 <strong>Address:</strong> {address}
               </Text>
               <Text style={{ margin: "4px 0" }}>
-                <strong>Preferred pickup:</strong> {preferredPickupDate} at{" "}
-                {timeSlotLabel(preferredPickupTime)}
+                <strong>Requested pickup:</strong> {preferredPickupDate} at{" "}
+                {windowLabel(preferredPickupTime)}
               </Text>
               {preferredDeliveryDate && preferredDeliveryTime && (
                 <Text style={{ margin: "4px 0" }}>
-                  <strong>Preferred delivery:</strong> {preferredDeliveryDate} at{" "}
-                  {timeSlotLabel(preferredDeliveryTime)}
+                  <strong>Requested delivery:</strong> {preferredDeliveryDate} at{" "}
+                  {windowLabel(preferredDeliveryTime)}
                 </Text>
               )}
               {specialInstructions && (

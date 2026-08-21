@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { timeSlotLabel } from "@/lib/validations/booking-schema";
+import { windowLabel } from "@/lib/validations/booking-schema";
 import { StatusSelect } from "./status-select";
 import { PaidCheckbox } from "./paid-checkbox";
 import { BookingsFilters } from "./bookings-filters";
@@ -127,7 +127,7 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
                 <TableCell>
                   <div>{formatDate(booking.preferred_pickup_date)}</div>
                   <div className="text-sm text-muted-foreground">
-                    {timeSlotLabel(booking.preferred_pickup_time)}
+                    {windowLabel(booking.preferred_pickup_time)}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -135,7 +135,7 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
                     <>
                       <div>{formatDate(booking.preferred_delivery_date)}</div>
                       <div className="text-sm text-muted-foreground">
-                        {timeSlotLabel(booking.preferred_delivery_time)}
+                        {windowLabel(booking.preferred_delivery_time)}
                       </div>
                     </>
                   ) : (

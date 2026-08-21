@@ -17,7 +17,7 @@ export async function sendBookingNotification({
   const { error } = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
     to: process.env.BOOKING_NOTIFICATION_TO_EMAIL!,
-    subject: `New booking request — ${booking.name}`,
+    subject: `${booking.serviceSpeed === "same_day" ? "SAME-DAY: " : ""}New booking request — ${booking.name}`,
     react: (
       <NewBookingNotification
         bookingId={bookingId}
@@ -28,6 +28,7 @@ export async function sendBookingNotification({
         preferredPickupTime={booking.preferredPickupTime}
         preferredDeliveryDate={booking.preferredDeliveryDate || null}
         preferredDeliveryTime={booking.preferredDeliveryTime || null}
+        serviceSpeed={booking.serviceSpeed}
         specialInstructions={booking.specialInstructions || null}
       />
     ),
