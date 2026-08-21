@@ -9,7 +9,7 @@ export const about = {
   story: {
     heading: "Our story",
     paragraphs: [
-      "Mars Laundromat was founded by a family who came to Brooklyn with very little except a willingness to work hard and a belief that a laundromat could be more than a place you rush in and out of. Years later, that's still the standard we hold ourselves to, every wash, every fold, every delivery.",
+      "Mars Laundromat was founded by a family who came to Brooklyn with very little except a willingness to work hard and a belief that a laundromat could be more than a place you rush in and out of. Years later, that's still the standard we hold ourselves to, every wash, every fold, every interaction.",
       "What we learned throughout the years was that the best part of running a neighborhood laundromat isn't the laundry. It's the people. The regulars who've been coming since the beginning. The families who moved away but still talk about us. The new faces who slowly become familiar ones.",
       "Many years and memories later, while Park Slope has massively changed around us, one thing hasn't: our dedication to those who walk through that door, and the belief that a laundromat can mean more than clean clothes.",
     ],
