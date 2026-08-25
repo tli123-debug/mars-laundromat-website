@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -10,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { windowLabel } from "@/lib/validations/booking-schema";
 import { StatusSelect } from "./status-select";
-import { PaidCheckbox } from "./paid-checkbox";
+import { PaymentControl } from "./payment-control";
 import { BookingsFilters } from "./bookings-filters";
 import { isDateRangeOption, getDateRange, type DateRangeOption } from "./date-range";
 
@@ -117,10 +118,16 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
                   <StatusSelect bookingId={booking.id} status={booking.status} />
                 </TableCell>
                 <TableCell>
-                  <PaidCheckbox bookingId={booking.id} paid={booking.paid} />
+                  <PaymentControl
+                    bookingId={booking.id}
+                    paid={booking.paid}
+                    paymentMethod={booking.payment_method}
+                  />
                 </TableCell>
                 <TableCell>
-                  <div className="font-medium">{booking.name}</div>
+                  <Link href={`/admin/bookings/${booking.id}`} className="font-medium hover:underline">
+                    {booking.name}
+                  </Link>
                   <div className="text-sm text-muted-foreground">{booking.phone}</div>
                   <div className="text-sm text-muted-foreground">{booking.address}</div>
                 </TableCell>

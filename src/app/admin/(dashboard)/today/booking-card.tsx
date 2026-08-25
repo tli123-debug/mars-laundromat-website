@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { StatusSelect } from "@/app/admin/(dashboard)/bookings/status-select";
+import { PaymentControl } from "@/app/admin/(dashboard)/bookings/payment-control";
 import { windowLabel } from "@/lib/validations/booking-schema";
 import { bookingMapsHref, bookingPhoneHref, bookingSmsHref } from "@/lib/booking-links";
 import type { Database } from "@/types/database.types";
@@ -78,18 +80,15 @@ export function BookingCard({ booking }: { booking: BookingRow }) {
     <div className="rounded-2xl border border-border bg-background p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="font-medium">{booking.name}</div>
+          <Link href={`/admin/bookings/${booking.id}`} className="font-medium hover:underline">
+            {booking.name}
+          </Link>
           <div className="text-sm text-muted-foreground">{booking.phone}</div>
           <div className="text-sm text-muted-foreground">{booking.address}</div>
         </div>
         <div className="flex flex-col items-end gap-2">
           <StatusSelect bookingId={booking.id} status={booking.status} />
-          {/* Read-only until Checkpoint 2's atomic Cash/Zelle mechanism replaces
-              the old paid boolean — not wiring up the existing checkbox here
-              rather than exposing a mutation already known to be replaced. */}
-          <span className="text-xs text-muted-foreground">
-            {booking.paid ? "Paid 已付款" : "Unpaid 未付款"}
-          </span>
+          <PaymentControl bookingId={booking.id} paid={booking.paid} paymentMethod={booking.payment_method} />
         </div>
       </div>
 
