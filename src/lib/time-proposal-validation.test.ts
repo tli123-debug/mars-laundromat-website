@@ -1,0 +1,277 @@
+import { describe, expect, it } from "vitest";
+import { getWindowsForDate, storeHoursFor } from "@/lib/booking-hours";
+import {
+  buildApproveTimePayload,
+  buildClearProposedTimePayload,
+  buildSaveProposedTimePayload,
+  hasCompleteProposedTime,
+  isDeliveryNotBeforePickup,
+  isPreLifecycle,
+  isValidStoreWindow,
+  validateProposedTime,
+} from "./time-proposal-validation";
+
+const PICKUP_DATE = "2026-09-14";
+const DELIVERY_DATE = "2026-09-15";
+
+describe("isValidStoreWindow", () => {
+  it("accepts the store's actual opening window for a given date", () => {
+    const { openMinutes } = storeHoursFor(PICKUP_DATE);
+    const openValue = `${String(Math.floor(openMinutes / 60)).padStart(2, "0")}:${String(openMinutes % 60).padStart(2, "0")}`;
+    expect(isValidStoreWindow(PICKUP_DATE, openValue)).toBe(true);
+  });
+
+  it("rejects a time before the store opens on any day", () => {
+    expect(isValidStoreWindow(PICKUP_DATE, "03:00")).toBe(false);
+  });
+
+  it("rejects a time after the store closes on any day", () => {
+    expect(isValidStoreWindow(PICKUP_DATE, "23:30")).toBe(false);
+  });
+
+  it("rejects a malformed/nonsense time value", () => {
+    expect(isValidStoreWindow(PICKUP_DATE, "not-a-time")).toBe(false);
+  });
+
+  it("still validates against past dates (excludePast: false) — staff may be backfilling", () => {
+    const { openMinutes } = storeHoursFor("2020-01-06");
+    const openValue = `${String(Math.floor(openMinutes / 60)).padStart(2, "0")}:${String(openMinutes % 60).padStart(2, "0")}`;
+    expect(isValidStoreWindow("2020-01-06", openValue)).toBe(true);
+  });
+});
+
+describe("isDeliveryNotBeforePickup", () => {
+  it("accepts delivery on a later date", () => {
+    expect(
+      isDeliveryNotBeforePickup({
+        confirmedPickupDate: PICKUP_DATE,
+        confirmedPickupTime: "10:00",
+        confirmedDeliveryDate: DELIVERY_DATE,
+        confirmedDeliveryTime: "09:00",
+      })
+    ).toBe(true);
+  });
+
+  it("accepts a later window the same day", () => {
+    expect(
+      isDeliveryNotBeforePickup({
+        confirmedPickupDate: PICKUP_DATE,
+        confirmedPickupTime: "10:00",
+        confirmedDeliveryDate: PICKUP_DATE,
+        confirmedDeliveryTime: "14:00",
+      })
+    ).toBe(true);
+  });
+
+  it("accepts the exact same window (boundary, not an error)", () => {
+    expect(
+      isDeliveryNotBeforePickup({
+        confirmedPickupDate: PICKUP_DATE,
+        confirmedPickupTime: "10:00",
+        confirmedDeliveryDate: PICKUP_DATE,
+        confirmedDeliveryTime: "10:00",
+      })
+    ).toBe(true);
+  });
+
+  it("rejects an earlier date", () => {
+    expect(
+      isDeliveryNotBeforePickup({
+        confirmedPickupDate: DELIVERY_DATE,
+        confirmedPickupTime: "10:00",
+        confirmedDeliveryDate: PICKUP_DATE,
+        confirmedDeliveryTime: "10:00",
+      })
+    ).toBe(false);
+  });
+
+  it("rejects an earlier window the same day", () => {
+    expect(
+      isDeliveryNotBeforePickup({
+        confirmedPickupDate: PICKUP_DATE,
+        confirmedPickupTime: "14:00",
+        confirmedDeliveryDate: PICKUP_DATE,
+        confirmedDeliveryTime: "10:00",
+      })
+    ).toBe(false);
+  });
+});
+
+describe("validateProposedTime", () => {
+  it("returns null for a fully valid proposal", () => {
+    const pickupWindow = getWindowsForDate(PICKUP_DATE, { excludePast: false })[0];
+    const deliveryWindow = getWindowsForDate(DELIVERY_DATE, { excludePast: false })[0];
+    expect(
+      validateProposedTime({
+        confirmedPickupDate: PICKUP_DATE,
+        confirmedPickupTime: pickupWindow.value,
+        confirmedDeliveryDate: DELIVERY_DATE,
+        confirmedDeliveryTime: deliveryWindow.value,
+      })
+    ).toBeNull();
+  });
+
+  it("rejects an out-of-hours pickup window even if delivery is fine", () => {
+    const deliveryWindow = getWindowsForDate(DELIVERY_DATE, { excludePast: false })[0];
+    const result = validateProposedTime({
+      confirmedPickupDate: PICKUP_DATE,
+      confirmedPickupTime: "03:00",
+      confirmedDeliveryDate: DELIVERY_DATE,
+      confirmedDeliveryTime: deliveryWindow.value,
+    });
+    expect(result).toMatch(/pickup/i);
+  });
+
+  it("rejects an out-of-hours delivery window even if pickup is fine", () => {
+    const pickupWindow = getWindowsForDate(PICKUP_DATE, { excludePast: false })[0];
+    const result = validateProposedTime({
+      confirmedPickupDate: PICKUP_DATE,
+      confirmedPickupTime: pickupWindow.value,
+      confirmedDeliveryDate: DELIVERY_DATE,
+      confirmedDeliveryTime: "23:30",
+    });
+    expect(result).toMatch(/delivery/i);
+  });
+
+  it("rejects delivery scheduled before pickup even when both windows are individually valid", () => {
+    const windows = getWindowsForDate(PICKUP_DATE, { excludePast: false });
+    const earlyWindow = windows[0];
+    const lateWindow = windows[windows.length - 1];
+    const result = validateProposedTime({
+      confirmedPickupDate: PICKUP_DATE,
+      confirmedPickupTime: lateWindow.value,
+      confirmedDeliveryDate: PICKUP_DATE,
+      confirmedDeliveryTime: earlyWindow.value,
+    });
+    expect(result).toMatch(/before/i);
+  });
+});
+
+describe("hasCompleteProposedTime", () => {
+  it("true when all four fields are set", () => {
+    expect(
+      hasCompleteProposedTime({
+        confirmed_pickup_date: PICKUP_DATE,
+        confirmed_pickup_time: "10:00",
+        confirmed_delivery_date: DELIVERY_DATE,
+        confirmed_delivery_time: "09:00",
+      })
+    ).toBe(true);
+  });
+
+  it("false when delivery fields are missing — an incomplete confirmation", () => {
+    expect(
+      hasCompleteProposedTime({
+        confirmed_pickup_date: PICKUP_DATE,
+        confirmed_pickup_time: "10:00",
+        confirmed_delivery_date: null,
+        confirmed_delivery_time: null,
+      })
+    ).toBe(false);
+  });
+
+  it("false when pickup fields are missing", () => {
+    expect(
+      hasCompleteProposedTime({
+        confirmed_pickup_date: null,
+        confirmed_pickup_time: null,
+        confirmed_delivery_date: DELIVERY_DATE,
+        confirmed_delivery_time: "09:00",
+      })
+    ).toBe(false);
+  });
+
+  it("false when nothing is set", () => {
+    expect(
+      hasCompleteProposedTime({
+        confirmed_pickup_date: null,
+        confirmed_pickup_time: null,
+        confirmed_delivery_date: null,
+        confirmed_delivery_time: null,
+      })
+    ).toBe(false);
+  });
+});
+
+describe("isPreLifecycle", () => {
+  it("true for pending and confirmed", () => {
+    expect(isPreLifecycle("pending")).toBe(true);
+    expect(isPreLifecycle("confirmed")).toBe(true);
+  });
+
+  it("false for every status at or past picked_up", () => {
+    expect(isPreLifecycle("picked_up")).toBe(false);
+    expect(isPreLifecycle("ready_for_delivery")).toBe(false);
+    expect(isPreLifecycle("out_for_delivery")).toBe(false);
+    expect(isPreLifecycle("completed")).toBe(false);
+    expect(isPreLifecycle("cancelled")).toBe(false);
+  });
+});
+
+describe("post-pickup status preservation — build*Payload never move status once locked", () => {
+  const preferred = {
+    pickupDate: PICKUP_DATE,
+    pickupTime: "10:00",
+    deliveryDate: DELIVERY_DATE,
+    deliveryTime: "09:00",
+  };
+  const proposedInput = {
+    confirmedPickupDate: PICKUP_DATE,
+    confirmedPickupTime: "10:00",
+    confirmedDeliveryDate: DELIVERY_DATE,
+    confirmedDeliveryTime: "09:00",
+  };
+  const lockedStatuses = ["picked_up", "ready_for_delivery", "out_for_delivery", "completed", "cancelled"] as const;
+
+  it("buildApproveTimePayload sets status to confirmed pre-lifecycle", () => {
+    expect(buildApproveTimePayload(preferred, "pending", "user-1").status).toBe("confirmed");
+    expect(buildApproveTimePayload(preferred, "confirmed", "user-1").status).toBe("confirmed");
+  });
+
+  it("buildApproveTimePayload omits status once picked_up or later, but still updates the times", () => {
+    for (const status of lockedStatuses) {
+      const payload = buildApproveTimePayload(preferred, status, "user-1");
+      expect(payload).not.toHaveProperty("status");
+      expect(payload.confirmed_pickup_date).toBe(preferred.pickupDate);
+      expect(payload.confirmed_delivery_time).toBe(preferred.deliveryTime);
+    }
+  });
+
+  it("buildSaveProposedTimePayload sets status to pending pre-lifecycle", () => {
+    expect(buildSaveProposedTimePayload(proposedInput, "pending", "user-1").status).toBe("pending");
+    expect(buildSaveProposedTimePayload(proposedInput, "confirmed", "user-1").status).toBe("pending");
+  });
+
+  it("buildSaveProposedTimePayload omits status once picked_up or later — the 'Update Confirmed Times' path", () => {
+    for (const status of lockedStatuses) {
+      const payload = buildSaveProposedTimePayload(proposedInput, status, "user-1");
+      expect(payload).not.toHaveProperty("status");
+      expect(payload.confirmed_delivery_time).toBe(proposedInput.confirmedDeliveryTime);
+    }
+  });
+
+  it("buildClearProposedTimePayload sets status to pending pre-lifecycle", () => {
+    expect(buildClearProposedTimePayload("confirmed", "user-1")).toEqual({
+      confirmed_pickup_date: null,
+      confirmed_pickup_time: null,
+      confirmed_delivery_date: null,
+      confirmed_delivery_time: null,
+      status: "pending",
+      updated_by: "user-1",
+    });
+  });
+
+  it("buildClearProposedTimePayload clears the fields but omits status once picked_up or later", () => {
+    for (const status of lockedStatuses) {
+      const payload = buildClearProposedTimePayload(status, "user-1");
+      expect(payload).not.toHaveProperty("status");
+      expect(payload).toEqual({
+        confirmed_pickup_date: null,
+        confirmed_pickup_time: null,
+        confirmed_delivery_date: null,
+        confirmed_delivery_time: null,
+        updated_by: "user-1",
+      });
+    }
+  });
+});

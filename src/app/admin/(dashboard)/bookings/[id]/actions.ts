@@ -11,23 +11,18 @@ import {
   canMarkQuoteSent,
   quoteEntrySchema,
 } from "@/lib/quote-validation";
-import type { BookingStatus } from "@/types/database.types";
+import {
+  buildApproveTimePayload,
+  buildClearProposedTimePayload,
+  buildSaveProposedTimePayload,
+  hasCompleteProposedTime,
+  validateProposedTime,
+} from "@/lib/time-proposal-validation";
 
 function revalidateBookingPaths(bookingId: string) {
   revalidatePath("/admin/today");
   revalidatePath("/admin/bookings");
   revalidatePath(`/admin/bookings/${bookingId}`);
-}
-
-// The pending<->confirmed transition belongs to the initial "are we on for
-// this pickup?" negotiation. Once a booking has moved into actual
-// fulfillment (picked up or later), these time actions still let staff
-// correct/adjust the confirmed_* fields, but must never touch status —
-// forcing an already-picked-up booking back to "pending" would vanish it
-// from the Today board's At Store section and wrongly resurface it under
-// Pending Review.
-function isPreLifecycle(status: BookingStatus): boolean {
-  return status === "pending" || status === "confirmed";
 }
 
 export async function approveRequestedTime(bookingId: string) {
@@ -44,17 +39,22 @@ export async function approveRequestedTime(bookingId: string) {
     return { error: "Couldn't find that booking." };
   }
 
-  const { error } = await supabase
-    .from("bookings")
-    .update({
-      confirmed_pickup_date: booking.preferred_pickup_date,
-      confirmed_pickup_time: booking.preferred_pickup_time,
-      confirmed_delivery_date: booking.preferred_delivery_date,
-      confirmed_delivery_time: booking.preferred_delivery_time,
-      ...(isPreLifecycle(booking.status) ? { status: "confirmed" as const } : {}),
-      updated_by: user.id,
-    })
-    .eq("id", bookingId);
+  if (!booking.preferred_delivery_date || !booking.preferred_delivery_time) {
+    return { error: "This booking is missing delivery details." };
+  }
+
+  const payload = buildApproveTimePayload(
+    {
+      pickupDate: booking.preferred_pickup_date,
+      pickupTime: booking.preferred_pickup_time,
+      deliveryDate: booking.preferred_delivery_date,
+      deliveryTime: booking.preferred_delivery_time,
+    },
+    booking.status,
+    user.id
+  );
+
+  const { error } = await supabase.from("bookings").update(payload).eq("id", bookingId);
 
   if (error) {
     console.error("Approve requested time failed:", error);
@@ -80,6 +80,11 @@ export async function saveProposedTime(bookingId: string, input: unknown) {
     return { error: "Please fill in a complete pickup and delivery time." };
   }
 
+  const validationError = validateProposedTime(parsed.data);
+  if (validationError) {
+    return { error: validationError };
+  }
+
   const supabase = await createClient();
   const { data: booking, error: fetchError } = await supabase
     .from("bookings")
@@ -91,17 +96,8 @@ export async function saveProposedTime(bookingId: string, input: unknown) {
     return { error: "Couldn't find that booking." };
   }
 
-  const { error } = await supabase
-    .from("bookings")
-    .update({
-      confirmed_pickup_date: parsed.data.confirmedPickupDate,
-      confirmed_pickup_time: parsed.data.confirmedPickupTime,
-      confirmed_delivery_date: parsed.data.confirmedDeliveryDate,
-      confirmed_delivery_time: parsed.data.confirmedDeliveryTime,
-      ...(isPreLifecycle(booking.status) ? { status: "pending" as const } : {}),
-      updated_by: user.id,
-    })
-    .eq("id", bookingId);
+  const payload = buildSaveProposedTimePayload(parsed.data, booking.status, user.id);
+  const { error } = await supabase.from("bookings").update(payload).eq("id", bookingId);
 
   if (error) {
     console.error("Save proposed time failed:", error);
@@ -118,7 +114,9 @@ export async function markTimesConfirmed(bookingId: string) {
 
   const { data: booking, error: fetchError } = await supabase
     .from("bookings")
-    .select("status, confirmed_pickup_date, confirmed_pickup_time")
+    .select(
+      "status, confirmed_pickup_date, confirmed_pickup_time, confirmed_delivery_date, confirmed_delivery_time"
+    )
     .eq("id", bookingId)
     .single();
 
@@ -126,8 +124,8 @@ export async function markTimesConfirmed(bookingId: string) {
     return { error: "Couldn't find that booking." };
   }
 
-  if (!booking.confirmed_pickup_date || !booking.confirmed_pickup_time) {
-    return { error: "Save a proposed time before marking it confirmed." };
+  if (!hasCompleteProposedTime(booking)) {
+    return { error: "Save a complete proposed pickup and delivery time before marking it confirmed." };
   }
 
   if (booking.status !== "pending") {
@@ -162,17 +160,8 @@ export async function clearProposedTime(bookingId: string) {
     return { error: "Couldn't find that booking." };
   }
 
-  const { error } = await supabase
-    .from("bookings")
-    .update({
-      confirmed_pickup_date: null,
-      confirmed_pickup_time: null,
-      confirmed_delivery_date: null,
-      confirmed_delivery_time: null,
-      ...(isPreLifecycle(booking.status) ? { status: "pending" as const } : {}),
-      updated_by: user.id,
-    })
-    .eq("id", bookingId);
+  const payload = buildClearProposedTimePayload(booking.status, user.id);
+  const { error } = await supabase.from("bookings").update(payload).eq("id", bookingId);
 
   if (error) {
     console.error("Clear proposed time failed:", error);

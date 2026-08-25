@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getWindowsForDate } from "@/lib/booking-hours";
 import { windowLabel } from "@/lib/validations/booking-schema";
+import { isPreLifecycle } from "@/lib/time-proposal-validation";
 import type { BookingStatus } from "@/types/database.types";
 import { approveRequestedTime, clearProposedTime, markTimesConfirmed, saveProposedTime } from "./actions";
 
@@ -51,7 +52,14 @@ export function TimeEditor({
   const [deliveryTime, setDeliveryTime] = useState(confirmedDeliveryTime ?? preferredDeliveryTime ?? "");
 
   const hasProposed = Boolean(confirmedPickupDate && confirmedPickupTime);
+  const hasCompleteProposal = Boolean(
+    confirmedPickupDate && confirmedPickupTime && confirmedDeliveryDate && confirmedDeliveryTime
+  );
   const timeLabel = status === "pending" ? "Proposed time 建议时间" : "Confirmed time 已确认时间";
+  // Once a booking has physically progressed past pickup, the pending<->confirmed
+  // negotiation is over — only a plain correction action remains available.
+  const isLocked = !isPreLifecycle(status);
+  const saveButtonLabel = isLocked ? "Update Confirmed Times 更新已确认时间" : "Save Proposed Time 保存建议时间";
 
   function run(action: () => Promise<{ error: string | null }>, successMessage: string) {
     startTransition(async () => {
@@ -103,18 +111,20 @@ export function TimeEditor({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={isPending}
-          onClick={() => run(() => approveRequestedTime(bookingId), "Approved the requested time.")}
-        >
-          Approve Requested Time 批准请求时间
-        </Button>
+        {!isLocked && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isPending}
+            onClick={() => run(() => approveRequestedTime(bookingId), "Approved the requested time.")}
+          >
+            Approve Requested Time 批准请求时间
+          </Button>
+        )}
         <Button size="sm" variant="outline" disabled={isPending} onClick={() => setEditing((v) => !v)}>
-          Save Proposed Time 保存建议时间
+          {saveButtonLabel}
         </Button>
-        {hasProposed && status === "pending" && (
+        {!isLocked && hasCompleteProposal && status === "pending" && (
           <Button
             size="sm"
             variant="outline"
@@ -124,7 +134,7 @@ export function TimeEditor({
             Mark Times Confirmed 标记时间已确认
           </Button>
         )}
-        {hasProposed && (
+        {!isLocked && hasProposed && (
           <Button
             size="sm"
             variant="outline"
@@ -201,7 +211,7 @@ export function TimeEditor({
                       confirmedDeliveryDate: deliveryDate,
                       confirmedDeliveryTime: deliveryTime,
                     }),
-                  "Saved the proposed time."
+                  isLocked ? "Updated the confirmed times." : "Saved the proposed time."
                 )
               }
             >

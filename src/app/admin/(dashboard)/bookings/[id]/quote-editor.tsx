@@ -84,7 +84,7 @@ export function QuoteEditor({ booking }: { booking: BookingRow }) {
     startTransition(async () => {
       const result = await markQuoteSent(booking.id);
       if (result.error) toast.error(result.error);
-      else toast.success("Marked as sent — now text or call the customer with the total.");
+      else toast.success("Quote marked as sent.");
     });
   }
 

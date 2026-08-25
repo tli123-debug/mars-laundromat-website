@@ -1,0 +1,116 @@
+import { getWindowsForDate } from "@/lib/booking-hours";
+import type { BookingStatus } from "@/types/database.types";
+
+export interface ProposedTimeInput {
+  confirmedPickupDate: string;
+  confirmedPickupTime: string;
+  confirmedDeliveryDate: string;
+  confirmedDeliveryTime: string;
+}
+
+/**
+ * Whether `time` is actually one of the store's real windows for `date` —
+ * the client dropdown only ever offers valid values, but a Server Action
+ * can't trust that; it must re-check the same source of truth itself.
+ * excludePast: false because staff may legitimately be backfilling an
+ * earlier-today or past-dated correction, not just booking ahead.
+ */
+export function isValidStoreWindow(date: string, time: string): boolean {
+  return getWindowsForDate(date, { excludePast: false }).some((w) => w.value === time);
+}
+
+/** Delivery may be later the same window-day forward, but never before pickup. */
+export function isDeliveryNotBeforePickup(input: ProposedTimeInput): boolean {
+  const { confirmedPickupDate, confirmedPickupTime, confirmedDeliveryDate, confirmedDeliveryTime } = input;
+  if (confirmedDeliveryDate !== confirmedPickupDate) {
+    return confirmedDeliveryDate > confirmedPickupDate;
+  }
+  return confirmedDeliveryTime >= confirmedPickupTime;
+}
+
+/** First problem found with a manually-entered proposed/corrected time, or null if it's valid. */
+export function validateProposedTime(input: ProposedTimeInput): string | null {
+  if (!isValidStoreWindow(input.confirmedPickupDate, input.confirmedPickupTime)) {
+    return "That pickup time isn't a valid store window.";
+  }
+  if (!isValidStoreWindow(input.confirmedDeliveryDate, input.confirmedDeliveryTime)) {
+    return "That delivery time isn't a valid store window.";
+  }
+  if (!isDeliveryNotBeforePickup(input)) {
+    return "Delivery time can't be before the pickup time.";
+  }
+  return null;
+}
+
+/**
+ * "Mark Times Confirmed" means the customer accepted a complete proposal —
+ * pickup AND delivery both set, not just pickup. A partial state shouldn't
+ * be markable as confirmed even though it isn't reachable through the
+ * current actions (which always write all four fields together or none).
+ */
+export function hasCompleteProposedTime(booking: {
+  confirmed_pickup_date: string | null;
+  confirmed_pickup_time: string | null;
+  confirmed_delivery_date: string | null;
+  confirmed_delivery_time: string | null;
+}): boolean {
+  return Boolean(
+    booking.confirmed_pickup_date &&
+      booking.confirmed_pickup_time &&
+      booking.confirmed_delivery_date &&
+      booking.confirmed_delivery_time
+  );
+}
+
+/**
+ * Whether time-negotiation actions may still move `status`. The
+ * pending<->confirmed flip belongs to the initial "are we on for this
+ * pickup?" negotiation; once a booking has physically progressed to
+ * picked_up or later, time edits must never move status backward — that
+ * would vanish it from the Today board's At Store section and wrongly
+ * resurface it under Pending Review.
+ */
+export function isPreLifecycle(status: BookingStatus): boolean {
+  return status === "pending" || status === "confirmed";
+}
+
+export function buildApproveTimePayload(
+  preferred: { pickupDate: string; pickupTime: string; deliveryDate: string; deliveryTime: string },
+  currentStatus: BookingStatus,
+  userId: string
+) {
+  return {
+    confirmed_pickup_date: preferred.pickupDate,
+    confirmed_pickup_time: preferred.pickupTime,
+    confirmed_delivery_date: preferred.deliveryDate,
+    confirmed_delivery_time: preferred.deliveryTime,
+    ...(isPreLifecycle(currentStatus) ? { status: "confirmed" as const } : {}),
+    updated_by: userId,
+  };
+}
+
+export function buildSaveProposedTimePayload(
+  input: ProposedTimeInput,
+  currentStatus: BookingStatus,
+  userId: string
+) {
+  return {
+    confirmed_pickup_date: input.confirmedPickupDate,
+    confirmed_pickup_time: input.confirmedPickupTime,
+    confirmed_delivery_date: input.confirmedDeliveryDate,
+    confirmed_delivery_time: input.confirmedDeliveryTime,
+    ...(isPreLifecycle(currentStatus) ? { status: "pending" as const } : {}),
+    updated_by: userId,
+  };
+}
+
+export function buildClearProposedTimePayload(currentStatus: BookingStatus, userId: string) {
+  return {
+    confirmed_pickup_date: null,
+    confirmed_pickup_time: null,
+    confirmed_delivery_date: null,
+    confirmed_delivery_time: null,
+    ...(isPreLifecycle(currentStatus) ? { status: "pending" as const } : {}),
+    updated_by: userId,
+  };
+}
