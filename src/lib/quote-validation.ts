@@ -28,9 +28,9 @@ export function dollarsToCents(dollars: number): number {
 }
 
 /**
- * The $5 same-day fee only ever applies when the booking's actual
- * service_speed is same_day. Callers must check this against a row fetched
- * fresh from the database, never against client-submitted input alone.
+ * The same-day fee only ever applies when the booking's actual service_speed
+ * is same_day. Callers must check this against a row fetched fresh from the
+ * database, never against client-submitted input alone.
  */
 export function canApplySameDayFee(serviceSpeed: ServiceSpeed, sameDayApproved: boolean): boolean {
   return sameDayApproved && serviceSpeed === "same_day";

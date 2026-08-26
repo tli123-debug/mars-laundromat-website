@@ -1,3 +1,18 @@
+import {
+  MINIMUM_BILLABLE_WEIGHT_LB,
+  MINIMUM_ORDER_CENTS,
+  PRICE_PER_POUND_CENTS,
+  SAME_DAY_FEE_CENTS,
+} from "@/lib/pricing/calculate-quote";
+
+// Whole-dollar amounts ($30, $10) display with no decimals; anything with
+// actual cents ($1.50) keeps them — toFixed(0) alone would round 150 cents
+// to "$2" instead of showing "$1.50".
+function dollars(cents: number): string {
+  const value = cents / 100;
+  return value % 1 === 0 ? `$${value.toFixed(0)}` : `$${value.toFixed(2)}`;
+}
+
 export const services = {
   hero: {
     eyebrow: "Services",
@@ -56,11 +71,10 @@ export const services = {
     body: "Our free pickup & delivery service currently covers the heart of Park Slope — from 4th Avenue to 8th Avenue, and 1st Street to 20th Street. Not sure if you're in range? Give us a call and we'll let you know.",
   },
 
-  /** PLACEHOLDER — confirm real pricing before launch. */
   pricing: {
     heading: "Pricing",
-    body: "Wash & fold is priced by the pound, with a simple minimum per order. Exact pricing is confirmed when we message you back — no surprise fees.",
-    fromPrice: "From $2.25 / lb",
-    minimum: "15 lb minimum for pickup & delivery orders",
+    body: `Pickup & delivery is priced by the pound. We weigh your laundry at the store and text your exact quote and payment options afterward — pickup & delivery is free for approved addresses within our service area. Approved Same-Day Rush adds ${dollars(SAME_DAY_FEE_CENTS)}, and oversized or specialty items may carry an additional quoted surcharge based on size, condition, and handling.`,
+    fromPrice: `${dollars(PRICE_PER_POUND_CENTS)} / lb`,
+    minimum: `${dollars(MINIMUM_ORDER_CENTS)} minimum — orders under ${MINIMUM_BILLABLE_WEIGHT_LB} lb are billed at the minimum`,
   },
 } as const;

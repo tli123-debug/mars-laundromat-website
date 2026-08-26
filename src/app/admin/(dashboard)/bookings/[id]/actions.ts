@@ -192,7 +192,7 @@ export async function saveQuote(bookingId: string, input: unknown) {
   }
 
   if (parsed.data.sameDayApproved && !canApplySameDayFee(booking.service_speed, true)) {
-    return { error: "This booking isn't Same-Day Rush — the $5 fee doesn't apply." };
+    return { error: "This booking isn't Same-Day Rush — the $10 fee doesn't apply." };
   }
 
   const quoteResult = calculateQuote({

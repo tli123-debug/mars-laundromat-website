@@ -112,7 +112,7 @@ export function QuoteEditor({ booking }: { booking: BookingRow }) {
             disabled={!isSameDay}
           />
           <Label htmlFor="same-day-approved">
-            Same-Day fee ($5) 加急费
+            Same-Day fee ($10) 加急费
             {!isSameDay && <span className="text-muted-foreground">(not a Same-Day Rush booking)</span>}
           </Label>
         </div>

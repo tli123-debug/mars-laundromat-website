@@ -135,8 +135,8 @@ describe("buildQuoteUpdatePayload", () => {
     expect(buildQuoteUpdatePayload(input, quoteResult, "user-123")).toEqual({
       actual_weight_lb: 25,
       billable_weight_lb: 25,
-      laundry_charge_cents: 3300,
-      same_day_fee_cents: 500,
+      laundry_charge_cents: 3750,
+      same_day_fee_cents: 1000,
       surcharge_total_cents: 750,
       surcharge_notes: "Rug",
       quote_status: "draft",

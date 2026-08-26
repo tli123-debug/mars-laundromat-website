@@ -36,7 +36,7 @@ import { createBooking } from "@/app/(site)/book/actions";
 const SERVICE_SPEED_OPTIONS: { value: ServiceSpeed; label: string }[] = [
   { value: "standard", label: "Standard Next-Day" },
   { value: "flexible", label: "Flexible 24–48 Hours" },
-  { value: "same_day", label: "Same-Day Rush (+$5, subject to approval)" },
+  { value: "same_day", label: "Same-Day Rush (+$10, subject to approval)" },
 ];
 
 function formatDateDisplay(dateStr: string): string {

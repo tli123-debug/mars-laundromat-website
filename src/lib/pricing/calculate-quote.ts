@@ -7,13 +7,13 @@
  * written from this function's result.
  */
 
-// Exported so customer-facing pricing copy (src/content/booking.ts) can
-// reference these numbers directly instead of hardcoding a second copy that
-// could silently drift from the actual formula.
-export const MINIMUM_BILLABLE_WEIGHT_LB = 10;
-export const BASE_CHARGE_CENTS = 1800;
-export const PER_POUND_OVER_MINIMUM_CENTS = 100;
-export const SAME_DAY_FEE_CENTS = 500;
+// Exported so customer-facing pricing copy (src/content/booking.ts,
+// src/content/services.ts) can reference these numbers directly instead of
+// hardcoding a second copy that could silently drift from the actual formula.
+export const MINIMUM_BILLABLE_WEIGHT_LB = 20;
+export const PRICE_PER_POUND_CENTS = 150;
+export const MINIMUM_ORDER_CENTS = MINIMUM_BILLABLE_WEIGHT_LB * PRICE_PER_POUND_CENTS;
+export const SAME_DAY_FEE_CENTS = 1000;
 
 export interface SurchargeLineItem {
   description: string;
@@ -58,11 +58,10 @@ export function calculateQuote(input: QuoteInput): QuoteResult {
   // rounds up" rule, and exact for .5 inputs since N.5 is always precisely
   // representable in binary floating point (actualWeightLb is never negative
   // here, so there's no "rounds toward zero vs away from zero" ambiguity).
-  const billableWeightLb = Math.max(MINIMUM_BILLABLE_WEIGHT_LB, Math.round(actualWeightLb));
+  const roundedWeightLb = Math.round(actualWeightLb);
+  const billableWeightLb = Math.max(MINIMUM_BILLABLE_WEIGHT_LB, roundedWeightLb);
 
-  const laundryChargeCents =
-    BASE_CHARGE_CENTS +
-    Math.max(0, billableWeightLb - MINIMUM_BILLABLE_WEIGHT_LB) * PER_POUND_OVER_MINIMUM_CENTS;
+  const laundryChargeCents = billableWeightLb * PRICE_PER_POUND_CENTS;
 
   const sameDayFeeCents = sameDayApproved ? SAME_DAY_FEE_CENTS : 0;
 
