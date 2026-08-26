@@ -1,5 +1,10 @@
-import { getWindowsForDate } from "@/lib/booking-hours";
+import { getWindowsForDate, WINDOW_DURATION_MINUTES } from "@/lib/booking-hours";
 import type { BookingStatus } from "@/types/database.types";
+
+function timeValueToMinutes(time: string): number {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
 
 export interface ProposedTimeInput {
   confirmedPickupDate: string;
@@ -19,13 +24,20 @@ export function isValidStoreWindow(date: string, time: string): boolean {
   return getWindowsForDate(date, { excludePast: false }).some((w) => w.value === time);
 }
 
-/** Delivery may be later the same window-day forward, but never before pickup. */
+/**
+ * On a later date, delivery is always fine. On the same date, delivery must
+ * start at least one full window after pickup begins — same or overlapping
+ * windows (e.g. 10:00 pickup, 10:30 delivery) are rejected, since the item
+ * can't be dropped back off before that window's pickup is even done.
+ */
 export function isDeliveryNotBeforePickup(input: ProposedTimeInput): boolean {
   const { confirmedPickupDate, confirmedPickupTime, confirmedDeliveryDate, confirmedDeliveryTime } = input;
   if (confirmedDeliveryDate !== confirmedPickupDate) {
     return confirmedDeliveryDate > confirmedPickupDate;
   }
-  return confirmedDeliveryTime >= confirmedPickupTime;
+  const pickupMinutes = timeValueToMinutes(confirmedPickupTime);
+  const deliveryMinutes = timeValueToMinutes(confirmedDeliveryTime);
+  return deliveryMinutes >= pickupMinutes + WINDOW_DURATION_MINUTES;
 }
 
 /** First problem found with a manually-entered proposed/corrected time, or null if it's valid. */

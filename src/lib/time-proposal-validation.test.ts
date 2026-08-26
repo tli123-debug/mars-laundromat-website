@@ -63,13 +63,35 @@ describe("isDeliveryNotBeforePickup", () => {
     ).toBe(true);
   });
 
-  it("accepts the exact same window (boundary, not an error)", () => {
+  it("rejects the exact same pickup and delivery window", () => {
     expect(
       isDeliveryNotBeforePickup({
         confirmedPickupDate: PICKUP_DATE,
         confirmedPickupTime: "10:00",
         confirmedDeliveryDate: PICKUP_DATE,
         confirmedDeliveryTime: "10:00",
+      })
+    ).toBe(false);
+  });
+
+  it("rejects an overlapping window (10:00 pickup, 10:30 delivery)", () => {
+    expect(
+      isDeliveryNotBeforePickup({
+        confirmedPickupDate: PICKUP_DATE,
+        confirmedPickupTime: "10:00",
+        confirmedDeliveryDate: PICKUP_DATE,
+        confirmedDeliveryTime: "10:30",
+      })
+    ).toBe(false);
+  });
+
+  it("accepts delivery starting exactly one window after pickup (10:00 pickup, 11:00 delivery)", () => {
+    expect(
+      isDeliveryNotBeforePickup({
+        confirmedPickupDate: PICKUP_DATE,
+        confirmedPickupTime: "10:00",
+        confirmedDeliveryDate: PICKUP_DATE,
+        confirmedDeliveryTime: "11:00",
       })
     ).toBe(true);
   });
