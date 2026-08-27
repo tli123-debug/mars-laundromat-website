@@ -1,6 +1,8 @@
 import { z } from "zod";
-import type { QuoteStatus, ServiceSpeed } from "@/types/database.types";
-import type { QuoteResult } from "@/lib/pricing/calculate-quote";
+import type { QuoteStatus, ServiceSpeed, ServiceType } from "@/types/database.types";
+import { calculateQuote, type QuoteResult } from "@/lib/pricing/calculate-quote";
+import { calculateDryCleaningEffectiveCharge } from "@/lib/pricing/dry-cleaning-charge";
+import { serviceTypeIncludesDryCleaning, serviceTypeIncludesWashAndFold } from "@/lib/service-type";
 
 export const quoteEntrySchema = z.object({
   actualWeightLb: z.number().finite().nonnegative(),
@@ -67,6 +69,143 @@ export function buildQuoteUpdatePayload(input: QuoteEntryInput, quoteResult: Quo
     same_day_fee_cents: quoteResult.sameDayFeeCents,
     surcharge_total_cents: quoteResult.surchargeTotalCents,
     surcharge_notes: input.surchargeNotes && input.surchargeNotes.length > 0 ? input.surchargeNotes : null,
+    quote_status: "draft" as const,
+    quote_sent_at: null,
+    updated_by: userId,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Service-type-aware API (Dry Cleaning & Ironing expansion). Everything above
+// this line is untouched and still exactly what bookings/[id]/actions.ts
+// calls today — these are new, separately-named additions so Checkpoint 1
+// doesn't have to touch that already-shipped file's call sites. It's the
+// intended cutover target for a later checkpoint's rewrite of that file, at
+// which point the wash-and-fold-only functions above become dead code.
+// ---------------------------------------------------------------------------
+
+export const serviceQuoteEntrySchema = z.object({
+  actualWeightLb: z.number().finite().nonnegative().optional(),
+  sameDayApproved: z.boolean(),
+  dryCleaningItemSubtotalCents: z.number().int().nonnegative().optional(),
+  surchargeAmountCents: z.number().int().nonnegative().optional(),
+  surchargeNotes: z.string().trim().max(500).optional(),
+});
+
+export type ServiceQuoteEntryInput = z.infer<typeof serviceQuoteEntrySchema>;
+
+/**
+ * Business-rule validation, kept separate from serviceQuoteEntrySchema's
+ * shape validation the same way validateProposedTime() is kept separate
+ * from its own Zod schema in time-proposal-validation.ts — this is called
+ * by a Server Action *after* it fetches the booking's authoritative
+ * service_type, never trusting a client-submitted service type.
+ *
+ * Requires a weight for wash_and_fold/both. Requires a dry-cleaning
+ * subtotal for dry_cleaning/both, and requires it strictly greater than
+ * $0 — every approved garment price is positive, so $0 can only mean
+ * "nothing entered," never a real priced order that happens to hit the $30
+ * minimum (that flooring happens later, in calculateDryCleaningEffectiveCharge).
+ */
+export function validateQuoteEntryForServiceType(
+  serviceType: ServiceType,
+  input: ServiceQuoteEntryInput
+): string | null {
+  if (serviceTypeIncludesWashAndFold(serviceType) && input.actualWeightLb === undefined) {
+    return "Enter a weight for this booking's Wash & Fold items.";
+  }
+  if (serviceTypeIncludesDryCleaning(serviceType)) {
+    if (input.dryCleaningItemSubtotalCents === undefined || input.dryCleaningItemSubtotalCents <= 0) {
+      return "Enter a dry-cleaning item subtotal greater than $0.";
+    }
+  }
+  return null;
+}
+
+/**
+ * Service-type-aware replacement for canMarkQuoteSent(). wash_and_fold
+ * needs a real (>0) weight, exactly like the original. dry_cleaning needs a
+ * real (>0) item subtotal — presence alone isn't enough, since $0 can only
+ * mean "not entered," not a legitimately-priced order (see
+ * validateQuoteEntryForServiceType). both needs both.
+ */
+export function canMarkQuoteSentForServiceType(booking: {
+  quote_status: QuoteStatus;
+  service_type: ServiceType;
+  actual_weight_lb: number | null;
+  dry_cleaning_item_subtotal_cents: number | null;
+}): boolean {
+  if (booking.quote_status !== "draft") return false;
+
+  const weightOk = booking.actual_weight_lb !== null && booking.actual_weight_lb > 0;
+  const drySubtotalOk =
+    booking.dry_cleaning_item_subtotal_cents !== null && booking.dry_cleaning_item_subtotal_cents > 0;
+
+  if (booking.service_type === "wash_and_fold") return weightOk;
+  if (booking.service_type === "dry_cleaning") return drySubtotalOk;
+  return weightOk && drySubtotalOk;
+}
+
+/**
+ * Service-type-aware replacement for buildQuoteUpdatePayload(). Computes
+ * calculateQuote() for the wash-and-fold portion (when applicable) and
+ * calculateDryCleaningEffectiveCharge() for the dry-cleaning portion (when
+ * applicable) — "the same tested rules" the live admin preview also uses.
+ * Surcharges are computed once, independent of either portion, matching the
+ * existing single optional (amount, notes) pair model.
+ *
+ * dry_cleaning_item_subtotal_cents and dry_cleaning_effective_charge_cents
+ * are always written together, in this one object, never one without the
+ * other — satisfying bookings_dry_cleaning_amounts_check's atomicity
+ * requirement by construction. Both keys are omitted entirely for a
+ * wash_and_fold-only quote: they're already null from creation or from a
+ * prior service-type correction (buildServiceTypeChangePayload), so nothing
+ * needs to re-null them.
+ */
+export function buildServiceQuoteUpdatePayload(
+  serviceType: ServiceType,
+  input: ServiceQuoteEntryInput,
+  userId: string
+) {
+  const surchargeTotalCents =
+    input.surchargeAmountCents && input.surchargeAmountCents > 0 ? input.surchargeAmountCents : 0;
+  const surchargeNotesValue =
+    input.surchargeNotes && input.surchargeNotes.length > 0 ? input.surchargeNotes : null;
+
+  // Ternaries to `undefined` (not `let` + reassign to `{}`) so TypeScript
+  // keeps each branch's literal shape and treats the spread-in properties
+  // below as optional on the result, rather than widening them away to an
+  // untyped record the caller couldn't access by name.
+  const quoteResult =
+    serviceTypeIncludesWashAndFold(serviceType) && input.actualWeightLb !== undefined
+      ? calculateQuote({ actualWeightLb: input.actualWeightLb, sameDayApproved: input.sameDayApproved })
+      : undefined;
+
+  const washAndFoldFields = quoteResult
+    ? {
+        actual_weight_lb: input.actualWeightLb,
+        billable_weight_lb: quoteResult.billableWeightLb,
+        laundry_charge_cents: quoteResult.laundryChargeCents,
+        same_day_fee_cents: quoteResult.sameDayFeeCents,
+      }
+    : undefined;
+
+  const dryCleaningFields =
+    serviceTypeIncludesDryCleaning(serviceType) && input.dryCleaningItemSubtotalCents !== undefined
+      ? {
+          dry_cleaning_item_subtotal_cents: input.dryCleaningItemSubtotalCents,
+          dry_cleaning_effective_charge_cents: calculateDryCleaningEffectiveCharge(
+            serviceType,
+            input.dryCleaningItemSubtotalCents
+          ),
+        }
+      : undefined;
+
+  return {
+    ...washAndFoldFields,
+    ...dryCleaningFields,
+    surcharge_total_cents: surchargeTotalCents,
+    surcharge_notes: surchargeNotesValue,
     quote_status: "draft" as const,
     quote_sent_at: null,
     updated_by: userId,
