@@ -1,5 +1,18 @@
 import type { BookingStatus, ServiceSpeed, ServiceType } from "@/types/database.types";
 
+/**
+ * Bilingual, staff-facing labels — shared by the admin service-type badge
+ * and the service-type correction control so both always agree on wording.
+ * Separate from the internal notification email's own English-only labels
+ * (src/emails/new-booking-notification.tsx), which serve a different
+ * audience and are deliberately not shared with this admin-facing set.
+ */
+export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
+  wash_and_fold: "Wash & Fold 洗烘折",
+  dry_cleaning: "Dry Cleaning & Ironing 干洗及熨烫",
+  both: "Both Services 两种服务",
+};
+
 /** Null when neither is selected — callers must require at least one. */
 export function normalizeServiceType(washAndFold: boolean, dryCleaning: boolean): ServiceType | null {
   if (washAndFold && dryCleaning) return "both";

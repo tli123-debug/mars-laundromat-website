@@ -1,17 +1,8 @@
 import { z } from "zod";
 import type { QuoteStatus, ServiceSpeed, ServiceType } from "@/types/database.types";
-import { calculateQuote, type QuoteResult } from "@/lib/pricing/calculate-quote";
+import { calculateQuote } from "@/lib/pricing/calculate-quote";
 import { calculateDryCleaningEffectiveCharge } from "@/lib/pricing/dry-cleaning-charge";
 import { serviceTypeIncludesDryCleaning, serviceTypeIncludesWashAndFold } from "@/lib/service-type";
-
-export const quoteEntrySchema = z.object({
-  actualWeightLb: z.number().finite().nonnegative(),
-  sameDayApproved: z.boolean(),
-  surchargeAmountCents: z.number().int().nonnegative().optional(),
-  surchargeNotes: z.string().trim().max(500).optional(),
-});
-
-export type QuoteEntryInput = z.infer<typeof quoteEntrySchema>;
 
 /**
  * Rounds a dollar amount to the nearest cent. Throws on anything that isn't
@@ -32,62 +23,30 @@ export function dollarsToCents(dollars: number): number {
 /**
  * The same-day fee only ever applies when the booking's actual service_speed
  * is same_day. Callers must check this against a row fetched fresh from the
- * database, never against client-submitted input alone.
+ * database, never against client-submitted input alone. Kept alongside the
+ * service-aware API below (used by quote-editor.tsx's client-side preview) —
+ * service_speed alone fully determines same-day eligibility, since the
+ * database's bookings_service_type_speed_consistency_check structurally
+ * guarantees service_speed can only ever be 'same_day' on a wash_and_fold
+ * booking.
  */
 export function canApplySameDayFee(serviceSpeed: ServiceSpeed, sameDayApproved: boolean): boolean {
   return sameDayApproved && serviceSpeed === "same_day";
 }
 
-/**
- * A quote can only be marked sent once it's a saved draft with a real
- * (positive) weight — never from an empty/not-started quote, and never
- * re-sent from an already-sent one (editing a sent quote drops it back to
- * draft first; see buildQuoteUpdatePayload).
- */
-export function canMarkQuoteSent(booking: {
-  quote_status: QuoteStatus;
-  actual_weight_lb: number | null;
-}): boolean {
-  return (
-    booking.quote_status === "draft" &&
-    booking.actual_weight_lb !== null &&
-    booking.actual_weight_lb > 0
-  );
-}
-
-/**
- * The exact payload for saving a quote as a draft. Any save — including
- * editing a previously-sent quote — clears quote_sent_at back to null,
- * since the total may have just changed and a stale "sent" total would be
- * actively misleading.
- */
-export function buildQuoteUpdatePayload(input: QuoteEntryInput, quoteResult: QuoteResult, userId: string) {
-  return {
-    actual_weight_lb: input.actualWeightLb,
-    billable_weight_lb: quoteResult.billableWeightLb,
-    laundry_charge_cents: quoteResult.laundryChargeCents,
-    same_day_fee_cents: quoteResult.sameDayFeeCents,
-    surcharge_total_cents: quoteResult.surchargeTotalCents,
-    surcharge_notes: input.surchargeNotes && input.surchargeNotes.length > 0 ? input.surchargeNotes : null,
-    quote_status: "draft" as const,
-    quote_sent_at: null,
-    updated_by: userId,
-  };
-}
-
 // ---------------------------------------------------------------------------
-// Service-type-aware API (Dry Cleaning & Ironing expansion). Everything above
-// this line is untouched and still exactly what bookings/[id]/actions.ts
-// calls today — these are new, separately-named additions so Checkpoint 1
-// doesn't have to touch that already-shipped file's call sites. It's the
-// intended cutover target for a later checkpoint's rewrite of that file, at
-// which point the wash-and-fold-only functions above become dead code.
+// Service-type-aware API (Dry Cleaning & Ironing expansion). This is the only
+// API bookings/[id]/actions.ts calls as of Checkpoint 3's admin cutover — the
+// original wash-and-fold-only quoteEntrySchema/canMarkQuoteSent/
+// buildQuoteUpdatePayload (and calculateQuote's QuoteResult import they
+// needed) have been retired now that nothing calls them.
 // ---------------------------------------------------------------------------
 
 export const serviceQuoteEntrySchema = z.object({
   actualWeightLb: z.number().finite().nonnegative().optional(),
   sameDayApproved: z.boolean(),
   dryCleaningItemSubtotalCents: z.number().int().nonnegative().optional(),
+  dryCleaningNotes: z.string().trim().max(500).optional(),
   surchargeAmountCents: z.number().int().nonnegative().optional(),
   surchargeNotes: z.string().trim().max(500).optional(),
 });
@@ -175,17 +134,19 @@ export function canMarkQuoteSentForServiceType(booking: {
 }
 
 /**
- * Service-type-aware replacement for buildQuoteUpdatePayload(). Computes
- * calculateQuote() for the wash-and-fold portion (when applicable) and
- * calculateDryCleaningEffectiveCharge() for the dry-cleaning portion (when
- * applicable) — "the same tested rules" the live admin preview also uses.
- * Surcharges are computed once, independent of either portion, matching the
- * existing single optional (amount, notes) pair model.
+ * Builds the exact update payload for saving a service-aware quote as a
+ * draft. Computes calculateQuote() for the wash-and-fold portion (when
+ * applicable) and calculateDryCleaningEffectiveCharge() for the dry-cleaning
+ * portion (when applicable) — "the same tested rules" the live admin preview
+ * also uses. Surcharges are computed once, independent of either portion,
+ * matching the existing single optional (amount, notes) pair model.
  *
- * dry_cleaning_item_subtotal_cents and dry_cleaning_effective_charge_cents
- * are always written together, in this one object, never one without the
- * other — satisfying bookings_dry_cleaning_amounts_check's atomicity
- * requirement by construction. Both keys are omitted entirely for a
+ * dry_cleaning_item_subtotal_cents, dry_cleaning_effective_charge_cents, and
+ * dry_cleaning_notes are always written together, in this one object, never
+ * one without the other — satisfying bookings_dry_cleaning_amounts_check's
+ * atomicity requirement by construction (the CHECK itself doesn't govern
+ * dry_cleaning_notes, but writing it in lockstep with the amounts keeps the
+ * three from ever drifting apart). All three keys are omitted entirely for a
  * wash_and_fold-only quote: they're already null from creation or from a
  * prior service-type correction (buildServiceTypeChangePayload), so nothing
  * needs to re-null them.
@@ -238,6 +199,8 @@ export function buildServiceQuoteUpdatePayload(
             serviceType,
             input.dryCleaningItemSubtotalCents
           ),
+          dry_cleaning_notes:
+            input.dryCleaningNotes && input.dryCleaningNotes.length > 0 ? input.dryCleaningNotes : null,
         }
       : undefined;
 

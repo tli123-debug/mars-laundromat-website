@@ -4,9 +4,11 @@ import { requireAdmin } from "@/lib/supabase/require-admin";
 import { createClient } from "@/lib/supabase/server";
 import { StatusSelect } from "@/app/admin/(dashboard)/bookings/status-select";
 import { PaymentControl } from "@/app/admin/(dashboard)/bookings/payment-control";
+import { ServiceTypeBadge } from "@/app/admin/(dashboard)/bookings/service-type-badge";
 import { bookingMapsHref, bookingPhoneHref, bookingSmsHref } from "@/lib/booking-links";
 import { TimeEditor } from "./time-editor";
 import { QuoteEditor } from "./quote-editor";
+import { ServiceTypeSelect } from "./service-type-select";
 
 function QuickActionLink({ href, label }: { href: string; label: string }) {
   return (
@@ -38,7 +40,10 @@ export default async function AdminBookingDetailPage(props: PageProps<"/admin/bo
         <Link href="/admin/bookings" className="text-sm text-muted-foreground hover:text-foreground">
           ← All Bookings 所有预约
         </Link>
-        <h1 className="mt-1 font-display text-2xl font-semibold">{booking.name}</h1>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <h1 className="font-display text-2xl font-semibold">{booking.name}</h1>
+          <ServiceTypeBadge serviceType={booking.service_type} />
+        </div>
         <p className="text-sm text-muted-foreground">
           {booking.phone} · {booking.address}
         </p>
@@ -78,12 +83,24 @@ export default async function AdminBookingDetailPage(props: PageProps<"/admin/bo
 
       <section className="rounded-xl border border-border bg-background p-4">
         <h2 className="font-display text-base font-semibold">Quote 报价</h2>
-        <div className="mt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">Service 服务</span>
+          <ServiceTypeSelect
+            bookingId={booking.id}
+            serviceType={booking.service_type}
+            quoteStatus={booking.quote_status}
+          />
+        </div>
+        <div className="mt-4">
           <QuoteEditor booking={booking} />
         </div>
       </section>
 
-      {(booking.special_instructions || booking.special_instructions_zh || booking.admin_notes) && (
+      {(booking.special_instructions ||
+        booking.special_instructions_zh ||
+        booking.dry_cleaning_item_description ||
+        booking.dry_cleaning_notes ||
+        booking.admin_notes) && (
         <section className="rounded-xl border border-border bg-background p-4">
           <h2 className="font-display text-base font-semibold">Notes 备注</h2>
           <div className="mt-3 space-y-3 text-sm">
@@ -94,6 +111,21 @@ export default async function AdminBookingDetailPage(props: PageProps<"/admin/bo
                 {booking.special_instructions_zh && (
                   <div className="text-muted-foreground/80">{booking.special_instructions_zh}</div>
                 )}
+              </div>
+            )}
+            {booking.dry_cleaning_item_description && (
+              <div>
+                <div className="text-muted-foreground">Dry-cleaning items 干洗物品</div>
+                <div>{booking.dry_cleaning_item_description}</div>
+                {booking.dry_cleaning_item_description_zh && (
+                  <div className="text-muted-foreground/80">{booking.dry_cleaning_item_description_zh}</div>
+                )}
+              </div>
+            )}
+            {booking.dry_cleaning_notes && (
+              <div>
+                <div className="text-muted-foreground">Dry-cleaning notes 干洗备注</div>
+                <div>{booking.dry_cleaning_notes}</div>
               </div>
             )}
             {booking.admin_notes && (

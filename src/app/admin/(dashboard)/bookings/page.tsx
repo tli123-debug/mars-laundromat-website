@@ -12,6 +12,7 @@ import {
 import { windowLabel } from "@/lib/validations/booking-schema";
 import { StatusSelect } from "./status-select";
 import { PaymentControl } from "./payment-control";
+import { ServiceTypeBadge } from "./service-type-badge";
 import { BookingsFilters } from "./bookings-filters";
 import { isDateRangeOption, getDateRange, type DateRangeOption } from "./date-range";
 
@@ -125,9 +126,12 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
                   />
                 </TableCell>
                 <TableCell>
-                  <Link href={`/admin/bookings/${booking.id}`} className="font-medium hover:underline">
-                    {booking.name}
-                  </Link>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link href={`/admin/bookings/${booking.id}`} className="font-medium hover:underline">
+                      {booking.name}
+                    </Link>
+                    <ServiceTypeBadge serviceType={booking.service_type} />
+                  </div>
                   <div className="text-sm text-muted-foreground">{booking.phone}</div>
                   <div className="text-sm text-muted-foreground">{booking.address}</div>
                 </TableCell>

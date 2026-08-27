@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { StatusSelect } from "@/app/admin/(dashboard)/bookings/status-select";
 import { PaymentControl } from "@/app/admin/(dashboard)/bookings/payment-control";
+import { ServiceTypeBadge } from "@/app/admin/(dashboard)/bookings/service-type-badge";
 import { windowLabel } from "@/lib/validations/booking-schema";
 import { bookingMapsHref, bookingPhoneHref, bookingSmsHref } from "@/lib/booking-links";
 import type { Database } from "@/types/database.types";
@@ -80,9 +81,12 @@ export function BookingCard({ booking }: { booking: BookingRow }) {
     <div className="rounded-2xl border border-border bg-background p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href={`/admin/bookings/${booking.id}`} className="font-medium hover:underline">
-            {booking.name}
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={`/admin/bookings/${booking.id}`} className="font-medium hover:underline">
+              {booking.name}
+            </Link>
+            <ServiceTypeBadge serviceType={booking.service_type} />
+          </div>
           <div className="text-sm text-muted-foreground">{booking.phone}</div>
           <div className="text-sm text-muted-foreground">{booking.address}</div>
         </div>

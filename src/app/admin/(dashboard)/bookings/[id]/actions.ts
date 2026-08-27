@@ -4,13 +4,14 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { createClient } from "@/lib/supabase/server";
-import { calculateQuote } from "@/lib/pricing/calculate-quote";
 import {
-  buildQuoteUpdatePayload,
-  canApplySameDayFee,
-  canMarkQuoteSent,
-  quoteEntrySchema,
+  buildServiceQuoteUpdatePayload,
+  canMarkQuoteSentForServiceType,
+  serviceQuoteEntrySchema,
+  validateQuoteEntryForServiceType,
 } from "@/lib/quote-validation";
+import { buildServiceTypeChangePayload, canChangeServiceType } from "@/lib/service-type";
+import type { ServiceType } from "@/types/database.types";
 import {
   buildApproveTimePayload,
   buildClearProposedTimePayload,
@@ -18,6 +19,9 @@ import {
   hasCompleteProposedTime,
   validateProposedTime,
 } from "@/lib/time-proposal-validation";
+
+const SERVICE_TYPES = ["wash_and_fold", "dry_cleaning", "both"] as const;
+const serviceTypeSchema = z.enum(SERVICE_TYPES);
 
 function revalidateBookingPaths(bookingId: string) {
   revalidatePath("/admin/today");
@@ -175,7 +179,7 @@ export async function clearProposedTime(bookingId: string) {
 export async function saveQuote(bookingId: string, input: unknown) {
   const user = await requireAdmin();
 
-  const parsed = quoteEntrySchema.safeParse(input);
+  const parsed = serviceQuoteEntrySchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Please check the quote details." };
   }
@@ -183,7 +187,7 @@ export async function saveQuote(bookingId: string, input: unknown) {
   const supabase = await createClient();
   const { data: booking, error: fetchError } = await supabase
     .from("bookings")
-    .select("service_speed")
+    .select("service_type, service_speed")
     .eq("id", bookingId)
     .single();
 
@@ -191,23 +195,23 @@ export async function saveQuote(bookingId: string, input: unknown) {
     return { error: "Couldn't find that booking." };
   }
 
-  if (parsed.data.sameDayApproved && !canApplySameDayFee(booking.service_speed, true)) {
-    return { error: "This booking isn't Same-Day Rush — the $10 fee doesn't apply." };
+  const validationError = validateQuoteEntryForServiceType(
+    booking.service_type,
+    booking.service_speed,
+    parsed.data
+  );
+  if (validationError) {
+    return { error: validationError };
   }
 
-  const quoteResult = calculateQuote({
-    actualWeightLb: parsed.data.actualWeightLb,
-    sameDayApproved: parsed.data.sameDayApproved,
-    surcharges:
-      parsed.data.surchargeAmountCents && parsed.data.surchargeAmountCents > 0
-        ? [{ description: parsed.data.surchargeNotes || "Surcharge", amountCents: parsed.data.surchargeAmountCents }]
-        : [],
-  });
+  const payload = buildServiceQuoteUpdatePayload(
+    booking.service_type,
+    booking.service_speed,
+    parsed.data,
+    user.id
+  );
 
-  const { error } = await supabase
-    .from("bookings")
-    .update(buildQuoteUpdatePayload(parsed.data, quoteResult, user.id))
-    .eq("id", bookingId);
+  const { error } = await supabase.from("bookings").update(payload).eq("id", bookingId);
 
   if (error) {
     console.error("Save quote failed:", error);
@@ -224,7 +228,7 @@ export async function markQuoteSent(bookingId: string) {
 
   const { data: booking, error: fetchError } = await supabase
     .from("bookings")
-    .select("quote_status, actual_weight_lb")
+    .select("quote_status, service_type, actual_weight_lb, dry_cleaning_item_subtotal_cents")
     .eq("id", bookingId)
     .single();
 
@@ -232,8 +236,8 @@ export async function markQuoteSent(bookingId: string) {
     return { error: "Couldn't find that booking." };
   }
 
-  if (!canMarkQuoteSent(booking)) {
-    return { error: "Save a weighed quote before marking it sent." };
+  if (!canMarkQuoteSentForServiceType(booking)) {
+    return { error: "Save a complete quote before marking it sent." };
   }
 
   const { error } = await supabase
@@ -243,6 +247,61 @@ export async function markQuoteSent(bookingId: string) {
 
   if (error) {
     console.error("Mark quote sent failed:", error);
+    return { error: "Something went wrong updating that booking." };
+  }
+
+  revalidateBookingPaths(bookingId);
+  return { error: null };
+}
+
+/**
+ * Admin-only correction for a booking's service type — not a general edit,
+ * just the narrow "staff picked the wrong service on the phone" fix. Always
+ * clears the existing quote (buildServiceTypeChangePayload), since a
+ * service-type change invalidates whatever was quoted before; the caller's
+ * confirmation UI is responsible for warning staff when quote_status was
+ * already 'sent'. canChangeServiceType() rejects completed/cancelled
+ * bookings and, separately, any booking that's already paid — clearing the
+ * quote on a paid booking would leave a paid-but-unquoted record behind.
+ * Deliberately does not touch the preferred or confirmed pickup/delivery
+ * date and time fields.
+ */
+export async function changeServiceType(bookingId: string, newServiceType: unknown) {
+  const user = await requireAdmin();
+
+  const parsed = serviceTypeSchema.safeParse(newServiceType);
+  if (!parsed.success) {
+    return { error: "Please choose a valid service type." };
+  }
+
+  const supabase = await createClient();
+  const { data: booking, error: fetchError } = await supabase
+    .from("bookings")
+    .select("status, paid, quote_status, service_type")
+    .eq("id", bookingId)
+    .single();
+
+  if (fetchError || !booking) {
+    return { error: "Couldn't find that booking." };
+  }
+
+  if (!canChangeServiceType({ status: booking.status, paid: booking.paid })) {
+    if (booking.paid) {
+      return { error: "This booking is already paid — correct payment manually first if needed." };
+    }
+    return { error: "This booking's service type can no longer be changed." };
+  }
+
+  const newServiceTypeValue: ServiceType = parsed.data;
+  if (newServiceTypeValue === booking.service_type) {
+    return { error: "This booking is already that service type." };
+  }
+
+  const payload = buildServiceTypeChangePayload(newServiceTypeValue, user.id);
+  const { error } = await supabase.from("bookings").update(payload).eq("id", bookingId);
+
+  if (error) {
+    console.error("Change service type failed:", error);
     return { error: "Something went wrong updating that booking." };
   }
 
