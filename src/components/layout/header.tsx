@@ -3,12 +3,30 @@
 import Link from "next/link";
 import { useState } from "react";
 import { siteConfig } from "@/content/site-config";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu";
 
-const navLinks = [
-  { label: "Home", href: "/" },
-  { label: "About", href: "/about" },
-  { label: "Services", href: "/services" },
-  { label: "Contact", href: "/contact" },
+const NAV_LINK_CLASSNAME =
+  "text-sm font-medium text-foreground/80 transition-colors hover:text-foreground";
+const MOBILE_NAV_LINK_CLASSNAME =
+  "block rounded-md px-2 py-3 text-base font-medium text-foreground/80 hover:text-foreground";
+
+const serviceLinks = [
+  { label: "Wash & Fold", href: "/services/wash-and-fold" },
+  { label: "Dry Cleaning & Ironing", href: "/services/dry-cleaning" },
+  { label: "Commercial Laundry Services", href: "/services/commercial" },
 ];
 
 export function Header() {
@@ -26,15 +44,33 @@ export function Header() {
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-sm font-medium text-foreground/80 transition-colors hover:text-foreground"
-            >
-              {link.label}
-            </Link>
-          ))}
+          <Link href="/" className={NAV_LINK_CLASSNAME}>
+            Home
+          </Link>
+
+          <NavigationMenu>
+            <NavigationMenuList>
+              <NavigationMenuItem>
+                <NavigationMenuTrigger>Services</NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <ul className="flex flex-col gap-1">
+                    {serviceLinks.map((link) => (
+                      <li key={link.href}>
+                        <NavigationMenuLink href={link.href}>{link.label}</NavigationMenuLink>
+                      </li>
+                    ))}
+                  </ul>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+            </NavigationMenuList>
+          </NavigationMenu>
+
+          <Link href="/about" className={NAV_LINK_CLASSNAME}>
+            About
+          </Link>
+          <Link href="/contact" className={NAV_LINK_CLASSNAME}>
+            Contact
+          </Link>
         </nav>
 
         <div className="hidden md:block">
@@ -76,17 +112,57 @@ export function Header() {
       {isMenuOpen && (
         <nav className="border-t border-border px-6 pb-6 pt-2 md:hidden">
           <ul className="flex flex-col gap-1">
-            {navLinks.map((link) => (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  className="block rounded-md px-2 py-3 text-base font-medium text-foreground/80 hover:text-foreground"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {link.label}
-                </Link>
-              </li>
-            ))}
+            <li>
+              <Link
+                href="/"
+                className={MOBILE_NAV_LINK_CLASSNAME}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Home
+              </Link>
+            </li>
+            <li>
+              <Accordion type="single" collapsible>
+                <AccordionItem value="services" className="border-b-0">
+                  <AccordionTrigger className="rounded-md px-2 py-3 text-base font-medium text-foreground/80 hover:text-foreground hover:no-underline">
+                    Services
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-1">
+                    <ul className="flex flex-col gap-1 pl-2">
+                      {serviceLinks.map((link) => (
+                        <li key={link.href}>
+                          <Link
+                            href={link.href}
+                            className="block rounded-md px-2 py-2.5 text-sm font-medium text-foreground/80 hover:text-foreground"
+                            onClick={() => setIsMenuOpen(false)}
+                          >
+                            {link.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </li>
+            <li>
+              <Link
+                href="/about"
+                className={MOBILE_NAV_LINK_CLASSNAME}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                About
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/contact"
+                className={MOBILE_NAV_LINK_CLASSNAME}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Contact
+              </Link>
+            </li>
             <li className="pt-2">
               <Link
                 href="/book"

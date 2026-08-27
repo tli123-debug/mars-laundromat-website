@@ -7,6 +7,15 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "placehold.co" },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/services",
+        destination: "/services/wash-and-fold",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
