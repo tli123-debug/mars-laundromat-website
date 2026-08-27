@@ -68,8 +68,8 @@ export interface Database {
           same_day_fee_cents: number | null;
           surcharge_total_cents: number;
           surcharge_notes: string | null;
-          // Generated column (laundry_charge_cents + same_day_fee_cents +
-          // surcharge_total_cents) — read-only, omitted from Insert below.
+          // Generated column (laundry_charge_cents + dry_cleaning_effective_charge_cents
+          // + same_day_fee_cents + surcharge_total_cents) — read-only, omitted from Insert below.
           quote_total_cents: number | null;
           quote_status: QuoteStatus;
           quote_sent_at: string | null;

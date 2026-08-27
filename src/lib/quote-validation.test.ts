@@ -3,6 +3,7 @@ import {
   buildQuoteUpdatePayload,
   buildServiceQuoteUpdatePayload,
   canApplySameDayFee,
+  canApplySameDayFeeForServiceType,
   canMarkQuoteSent,
   canMarkQuoteSentForServiceType,
   dollarsToCents,
@@ -219,24 +220,48 @@ describe("serviceQuoteEntrySchema", () => {
 });
 
 describe("validateQuoteEntryForServiceType", () => {
-  it("wash_and_fold requires a weight", () => {
-    expect(validateQuoteEntryForServiceType("wash_and_fold", { sameDayApproved: false })).toMatch(
-      /weight/i
-    );
+  it("wash_and_fold rejects a missing weight", () => {
     expect(
-      validateQuoteEntryForServiceType("wash_and_fold", { actualWeightLb: 20, sameDayApproved: false })
+      validateQuoteEntryForServiceType("wash_and_fold", "standard", { sameDayApproved: false })
+    ).toMatch(/weight/i);
+  });
+
+  it("wash_and_fold rejects a zero weight — 0 is treated the same as missing", () => {
+    expect(
+      validateQuoteEntryForServiceType("wash_and_fold", "standard", {
+        actualWeightLb: 0,
+        sameDayApproved: false,
+      })
+    ).toMatch(/weight/i);
+  });
+
+  it("wash_and_fold accepts a positive weight", () => {
+    expect(
+      validateQuoteEntryForServiceType("wash_and_fold", "standard", {
+        actualWeightLb: 20,
+        sameDayApproved: false,
+      })
+    ).toBeNull();
+  });
+
+  it("dry_cleaning does not require a weight at all", () => {
+    expect(
+      validateQuoteEntryForServiceType("dry_cleaning", "dry_cleaning_timeline", {
+        dryCleaningItemSubtotalCents: 300,
+        sameDayApproved: false,
+      })
     ).toBeNull();
   });
 
   it("dry_cleaning requires a dry-cleaning subtotal — missing is rejected", () => {
-    expect(validateQuoteEntryForServiceType("dry_cleaning", { sameDayApproved: false })).toMatch(
-      /subtotal/i
-    );
+    expect(
+      validateQuoteEntryForServiceType("dry_cleaning", "dry_cleaning_timeline", { sameDayApproved: false })
+    ).toMatch(/subtotal/i);
   });
 
   it("dry_cleaning rejects a $0 subtotal — $0 is not a valid dry-cleaning subtotal, not a legitimate minimum-floored quote", () => {
     expect(
-      validateQuoteEntryForServiceType("dry_cleaning", {
+      validateQuoteEntryForServiceType("dry_cleaning", "dry_cleaning_timeline", {
         dryCleaningItemSubtotalCents: 0,
         sameDayApproved: false,
       })
@@ -245,30 +270,117 @@ describe("validateQuoteEntryForServiceType", () => {
 
   it("dry_cleaning accepts a positive subtotal", () => {
     expect(
-      validateQuoteEntryForServiceType("dry_cleaning", {
+      validateQuoteEntryForServiceType("dry_cleaning", "dry_cleaning_timeline", {
         dryCleaningItemSubtotalCents: 300,
         sameDayApproved: false,
       })
     ).toBeNull();
   });
 
-  it("both requires both a weight and a strictly positive dry-cleaning subtotal", () => {
+  it("both rejects a zero weight even with a valid dry-cleaning subtotal", () => {
     expect(
-      validateQuoteEntryForServiceType("both", { actualWeightLb: 20, sameDayApproved: false })
+      validateQuoteEntryForServiceType("both", "dry_cleaning_timeline", {
+        actualWeightLb: 0,
+        dryCleaningItemSubtotalCents: 1800,
+        sameDayApproved: false,
+      })
+    ).toMatch(/weight/i);
+  });
+
+  it("both requires both a strictly positive weight and a strictly positive dry-cleaning subtotal", () => {
+    expect(
+      validateQuoteEntryForServiceType("both", "dry_cleaning_timeline", {
+        actualWeightLb: 20,
+        sameDayApproved: false,
+      })
     ).toMatch(/subtotal/i);
     expect(
-      validateQuoteEntryForServiceType("both", {
+      validateQuoteEntryForServiceType("both", "dry_cleaning_timeline", {
         dryCleaningItemSubtotalCents: 1800,
         sameDayApproved: false,
       })
     ).toMatch(/weight/i);
     expect(
-      validateQuoteEntryForServiceType("both", {
+      validateQuoteEntryForServiceType("both", "dry_cleaning_timeline", {
         actualWeightLb: 20,
         dryCleaningItemSubtotalCents: 1800,
         sameDayApproved: false,
       })
     ).toBeNull();
+  });
+
+  describe("sameDayApproved — only ever valid for an actual wash_and_fold + same_day booking", () => {
+    it("accepts wash_and_fold + same_day", () => {
+      expect(
+        validateQuoteEntryForServiceType("wash_and_fold", "same_day", {
+          actualWeightLb: 20,
+          sameDayApproved: true,
+        })
+      ).toBeNull();
+    });
+
+    it("rejects Standard wash_and_fold", () => {
+      expect(
+        validateQuoteEntryForServiceType("wash_and_fold", "standard", {
+          actualWeightLb: 20,
+          sameDayApproved: true,
+        })
+      ).toMatch(/same-day/i);
+    });
+
+    it("rejects Flexible wash_and_fold", () => {
+      expect(
+        validateQuoteEntryForServiceType("wash_and_fold", "flexible", {
+          actualWeightLb: 20,
+          sameDayApproved: true,
+        })
+      ).toMatch(/same-day/i);
+    });
+
+    it("rejects dry_cleaning", () => {
+      expect(
+        validateQuoteEntryForServiceType("dry_cleaning", "dry_cleaning_timeline", {
+          dryCleaningItemSubtotalCents: 3000,
+          sameDayApproved: true,
+        })
+      ).toMatch(/same-day/i);
+    });
+
+    it("rejects both", () => {
+      expect(
+        validateQuoteEntryForServiceType("both", "dry_cleaning_timeline", {
+          actualWeightLb: 20,
+          dryCleaningItemSubtotalCents: 1800,
+          sameDayApproved: true,
+        })
+      ).toMatch(/same-day/i);
+    });
+  });
+});
+
+describe("canApplySameDayFeeForServiceType", () => {
+  it("accepts wash_and_fold + same_day + approved", () => {
+    expect(canApplySameDayFeeForServiceType("wash_and_fold", "same_day", true)).toBe(true);
+  });
+
+  it("rejects Standard wash_and_fold even if approved", () => {
+    expect(canApplySameDayFeeForServiceType("wash_and_fold", "standard", true)).toBe(false);
+  });
+
+  it("rejects Flexible wash_and_fold even if approved", () => {
+    expect(canApplySameDayFeeForServiceType("wash_and_fold", "flexible", true)).toBe(false);
+  });
+
+  it("rejects dry_cleaning even if approved and the speed is same_day-shaped", () => {
+    expect(canApplySameDayFeeForServiceType("dry_cleaning", "dry_cleaning_timeline", true)).toBe(false);
+  });
+
+  it("rejects both even if approved", () => {
+    expect(canApplySameDayFeeForServiceType("both", "dry_cleaning_timeline", true)).toBe(false);
+  });
+
+  it("rejects wash_and_fold + same_day when not approved", () => {
+    expect(canApplySameDayFeeForServiceType("wash_and_fold", "same_day", false)).toBe(false);
   });
 });
 
@@ -374,6 +486,7 @@ describe("buildServiceQuoteUpdatePayload", () => {
   it("dry_cleaning-only: omits every wash-and-fold key, applies the $30 minimum", () => {
     const payload = buildServiceQuoteUpdatePayload(
       "dry_cleaning",
+      "dry_cleaning_timeline",
       { dryCleaningItemSubtotalCents: 1800, sameDayApproved: false },
       "user-123"
     );
@@ -388,6 +501,7 @@ describe("buildServiceQuoteUpdatePayload", () => {
   it("wash_and_fold-only: omits every dry-cleaning key", () => {
     const payload = buildServiceQuoteUpdatePayload(
       "wash_and_fold",
+      "standard",
       { actualWeightLb: 20, sameDayApproved: false },
       "user-123"
     );
@@ -399,6 +513,7 @@ describe("buildServiceQuoteUpdatePayload", () => {
   it("both: $30 Wash & Fold plus $18 dry cleaning — no second minimum applied to the dry-cleaning portion", () => {
     const payload = buildServiceQuoteUpdatePayload(
       "both",
+      "dry_cleaning_timeline",
       { actualWeightLb: 20, dryCleaningItemSubtotalCents: 1800, sameDayApproved: false },
       "user-123"
     );
@@ -413,6 +528,7 @@ describe("buildServiceQuoteUpdatePayload", () => {
   it("writes the dry-cleaning subtotal and effective charge together, never one without the other", () => {
     const dryOnly = buildServiceQuoteUpdatePayload(
       "dry_cleaning",
+      "dry_cleaning_timeline",
       { dryCleaningItemSubtotalCents: 500, sameDayApproved: false },
       "user-123"
     );
@@ -423,6 +539,7 @@ describe("buildServiceQuoteUpdatePayload", () => {
   it("includes the surcharge regardless of service type", () => {
     const payload = buildServiceQuoteUpdatePayload(
       "dry_cleaning",
+      "dry_cleaning_timeline",
       {
         dryCleaningItemSubtotalCents: 1800,
         sameDayApproved: false,
@@ -438,10 +555,63 @@ describe("buildServiceQuoteUpdatePayload", () => {
   it("always resets quote_status to draft and quote_sent_at to null", () => {
     const payload = buildServiceQuoteUpdatePayload(
       "dry_cleaning",
+      "dry_cleaning_timeline",
       { dryCleaningItemSubtotalCents: 1800, sameDayApproved: false },
       "user-123"
     );
     expect(payload.quote_status).toBe("draft");
     expect(payload.quote_sent_at).toBeNull();
+  });
+
+  describe("never constructs an invalid Same-Day fee, regardless of what sameDayApproved claims", () => {
+    it("wash_and_fold + same_day + approved: the one legitimate case actually gets the $10 fee", () => {
+      const payload = buildServiceQuoteUpdatePayload(
+        "wash_and_fold",
+        "same_day",
+        { actualWeightLb: 20, sameDayApproved: true },
+        "user-123"
+      );
+      expect(payload.same_day_fee_cents).toBe(1000);
+    });
+
+    it("Standard wash_and_fold: sameDayApproved=true is ignored, fee stays 0", () => {
+      const payload = buildServiceQuoteUpdatePayload(
+        "wash_and_fold",
+        "standard",
+        { actualWeightLb: 20, sameDayApproved: true },
+        "user-123"
+      );
+      expect(payload.same_day_fee_cents).toBe(0);
+    });
+
+    it("Flexible wash_and_fold: sameDayApproved=true is ignored, fee stays 0", () => {
+      const payload = buildServiceQuoteUpdatePayload(
+        "wash_and_fold",
+        "flexible",
+        { actualWeightLb: 20, sameDayApproved: true },
+        "user-123"
+      );
+      expect(payload.same_day_fee_cents).toBe(0);
+    });
+
+    it("both: sameDayApproved=true is ignored even with a real weight and subtotal, fee stays 0", () => {
+      const payload = buildServiceQuoteUpdatePayload(
+        "both",
+        "dry_cleaning_timeline",
+        { actualWeightLb: 20, dryCleaningItemSubtotalCents: 1800, sameDayApproved: true },
+        "user-123"
+      );
+      expect(payload.same_day_fee_cents).toBe(0);
+    });
+
+    it("dry_cleaning: sameDayApproved=true never surfaces a same_day_fee_cents key at all", () => {
+      const payload = buildServiceQuoteUpdatePayload(
+        "dry_cleaning",
+        "dry_cleaning_timeline",
+        { dryCleaningItemSubtotalCents: 1800, sameDayApproved: true },
+        "user-123"
+      );
+      expect(payload).not.toHaveProperty("same_day_fee_cents");
+    });
   });
 });

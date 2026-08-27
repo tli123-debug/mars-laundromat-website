@@ -15,9 +15,14 @@
 -- migration loses the dry-cleaning portion of its total, and restoring
 -- bookings_same_day_fee_check to its original nonnegative-only rule removes
 -- the guarantee that a same-day fee can only ever land on a real same-day
--- wash-and-fold booking. Only run this if you are certain no real
--- dry-cleaning booking has been created yet — otherwise back up the
--- affected rows first.
+-- wash-and-fold booking. This script also FORCE-REWRITES service_speed to
+-- 'standard' on any booking currently set to 'dry_cleaning_timeline' —
+-- restoring the old three-value CHECK would otherwise reject the migration
+-- outright the moment any Dry Cleaning/Both booking exists, and there is no
+-- equivalent value to translate it to in the old three-value set. That
+-- booking's actual timeline is permanently lost, not just its extra
+-- columns. Only run this if you are certain no real dry-cleaning booking
+-- has been created yet — otherwise back up the affected rows first.
 -- ============================================================================
 begin;
 
@@ -57,6 +62,15 @@ alter table public.bookings add constraint bookings_same_day_fee_check
   check (same_day_fee_cents is null or same_day_fee_cents >= 0);
 
 alter table public.bookings drop constraint if exists bookings_service_type_speed_consistency_check;
+
+-- Lossy, and must run here: after the consistency check is gone (so this
+-- UPDATE itself isn't blocked by it) but before the narrower CHECK below is
+-- restored (adding a CHECK immediately validates every existing row, and
+-- 'dry_cleaning_timeline' has no place in the old three-value set — the
+-- ADD CONSTRAINT below would fail outright if any row still had it).
+-- 'standard' is the same default a brand new wash_and_fold booking gets;
+-- this does not recover what a dry-cleaning booking's actual timeline was.
+update public.bookings set service_speed = 'standard' where service_speed = 'dry_cleaning_timeline';
 
 alter table public.bookings drop constraint if exists bookings_service_speed_check;
 alter table public.bookings add constraint bookings_service_speed_check

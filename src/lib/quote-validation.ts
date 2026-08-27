@@ -95,29 +95,57 @@ export const serviceQuoteEntrySchema = z.object({
 export type ServiceQuoteEntryInput = z.infer<typeof serviceQuoteEntrySchema>;
 
 /**
+ * Service-type-aware replacement for canApplySameDayFee(). The $10 fee is
+ * only ever legal on a booking that is BOTH actually wash_and_fold AND
+ * actually same_day — both checked against values fetched fresh from the
+ * database, never trusted from client input. The original
+ * canApplySameDayFee(serviceSpeed, sameDayApproved) is left untouched for
+ * its existing wash-and-fold-only call site, which never handles any other
+ * service type and so never needed a service_type parameter.
+ */
+export function canApplySameDayFeeForServiceType(
+  serviceType: ServiceType,
+  serviceSpeed: ServiceSpeed,
+  sameDayApproved: boolean
+): boolean {
+  return sameDayApproved && serviceType === "wash_and_fold" && serviceSpeed === "same_day";
+}
+
+/**
  * Business-rule validation, kept separate from serviceQuoteEntrySchema's
  * shape validation the same way validateProposedTime() is kept separate
  * from its own Zod schema in time-proposal-validation.ts — this is called
  * by a Server Action *after* it fetches the booking's authoritative
- * service_type, never trusting a client-submitted service type.
+ * service_type AND service_speed, never trusting client-submitted values
+ * for either.
  *
- * Requires a weight for wash_and_fold/both. Requires a dry-cleaning
- * subtotal for dry_cleaning/both, and requires it strictly greater than
- * $0 — every approved garment price is positive, so $0 can only mean
- * "nothing entered," never a real priced order that happens to hit the $30
- * minimum (that flooring happens later, in calculateDryCleaningEffectiveCharge).
+ * Requires a strictly positive weight for wash_and_fold/both — 0 is
+ * rejected the same way it's rejected for a dry-cleaning subtotal, since a
+ * real wash-and-fold order is never legitimately weighed at exactly 0 lb.
+ * Requires a strictly positive dry-cleaning subtotal for dry_cleaning/both
+ * — every approved garment price is positive, so $0 can only mean "nothing
+ * entered," never a real priced order that happens to hit the $30 minimum
+ * (that flooring happens later, in calculateDryCleaningEffectiveCharge).
+ * Rejects sameDayApproved outright unless the booking is actually
+ * wash_and_fold AND actually same_day.
  */
 export function validateQuoteEntryForServiceType(
   serviceType: ServiceType,
+  serviceSpeed: ServiceSpeed,
   input: ServiceQuoteEntryInput
 ): string | null {
-  if (serviceTypeIncludesWashAndFold(serviceType) && input.actualWeightLb === undefined) {
-    return "Enter a weight for this booking's Wash & Fold items.";
+  if (serviceTypeIncludesWashAndFold(serviceType)) {
+    if (input.actualWeightLb === undefined || input.actualWeightLb <= 0) {
+      return "Enter a weight greater than 0 for this booking's Wash & Fold items.";
+    }
   }
   if (serviceTypeIncludesDryCleaning(serviceType)) {
     if (input.dryCleaningItemSubtotalCents === undefined || input.dryCleaningItemSubtotalCents <= 0) {
       return "Enter a dry-cleaning item subtotal greater than $0.";
     }
+  }
+  if (input.sameDayApproved && !canApplySameDayFeeForServiceType(serviceType, serviceSpeed, true)) {
+    return "This booking isn't Same-Day Rush — the $10 fee doesn't apply.";
   }
   return null;
 }
@@ -161,9 +189,19 @@ export function canMarkQuoteSentForServiceType(booking: {
  * wash_and_fold-only quote: they're already null from creation or from a
  * prior service-type correction (buildServiceTypeChangePayload), so nothing
  * needs to re-null them.
+ *
+ * Never trusts input.sameDayApproved directly — re-derives eligibility via
+ * canApplySameDayFeeForServiceType() from the authoritative serviceType/
+ * serviceSpeed passed in, so this function can't construct an invalid
+ * same-day fee (e.g. on a 'both' booking, or a Standard/Flexible
+ * wash_and_fold one) even if a caller skipped calling
+ * validateQuoteEntryForServiceType() first. The database would reject such
+ * a payload too (bookings_same_day_fee_check), but domain logic shouldn't
+ * rely on the database to catch what it can just never construct.
  */
 export function buildServiceQuoteUpdatePayload(
   serviceType: ServiceType,
+  serviceSpeed: ServiceSpeed,
   input: ServiceQuoteEntryInput,
   userId: string
 ) {
@@ -172,13 +210,15 @@ export function buildServiceQuoteUpdatePayload(
   const surchargeNotesValue =
     input.surchargeNotes && input.surchargeNotes.length > 0 ? input.surchargeNotes : null;
 
+  const sameDayApproved = canApplySameDayFeeForServiceType(serviceType, serviceSpeed, input.sameDayApproved);
+
   // Ternaries to `undefined` (not `let` + reassign to `{}`) so TypeScript
   // keeps each branch's literal shape and treats the spread-in properties
   // below as optional on the result, rather than widening them away to an
   // untyped record the caller couldn't access by name.
   const quoteResult =
     serviceTypeIncludesWashAndFold(serviceType) && input.actualWeightLb !== undefined
-      ? calculateQuote({ actualWeightLb: input.actualWeightLb, sameDayApproved: input.sameDayApproved })
+      ? calculateQuote({ actualWeightLb: input.actualWeightLb, sameDayApproved })
       : undefined;
 
   const washAndFoldFields = quoteResult
