@@ -49,6 +49,31 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="mx-auto max-w-6xl px-6 pt-20">
+        <h2 className="font-display text-3xl font-semibold sm:text-4xl">{home.services.heading}</h2>
+        <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
+          {home.services.body}
+        </p>
+        <div className="mt-10 grid gap-6 sm:grid-cols-2">
+          {home.services.items.map((service) => (
+            <Link
+              key={service.href}
+              href={service.href}
+              className="group rounded-2xl border border-border bg-background p-7 transition-colors hover:border-primary/40 hover:bg-muted"
+            >
+              <h3 className="font-display text-xl font-semibold">{service.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {service.description}
+              </p>
+              <p className="mt-4 text-sm font-semibold text-primary">{service.priceHint}</p>
+              <span className="mt-4 inline-flex items-center text-sm font-semibold text-primary underline-offset-4 group-hover:underline">
+                Learn more →
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section className="mx-auto max-w-6xl px-6 py-20">
         <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-16">
           <div>
@@ -75,6 +100,31 @@ export default function HomePage() {
             />
           </div>
         </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-6 pb-20">
+        <h2 className="font-display text-3xl font-semibold sm:text-4xl">{home.howItWorks.heading}</h2>
+        <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {home.howItWorks.steps.map((step, i) => (
+            <div key={step.title}>
+              <span className="font-display text-3xl font-semibold text-primary">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <h3 className="mt-3 text-lg font-semibold">{step.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {step.description}
+              </p>
+            </div>
+          ))}
+        </div>
+        <ul className="mt-12 flex flex-wrap gap-x-8 gap-y-2 border-t border-border pt-6 text-sm text-muted-foreground">
+          {home.pricingPreview.map((item) => (
+            <li key={item} className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+              {item}
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="bg-muted py-20">

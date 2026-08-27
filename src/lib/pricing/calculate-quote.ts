@@ -8,8 +8,9 @@
  */
 
 // Exported so customer-facing pricing copy (src/content/booking.ts,
-// src/content/services.ts) can reference these numbers directly instead of
-// hardcoding a second copy that could silently drift from the actual formula.
+// src/content/wash-and-fold.ts, src/content/home.ts) can reference these
+// numbers directly instead of hardcoding a second copy that could silently
+// drift from the actual formula.
 export const MINIMUM_BILLABLE_WEIGHT_LB = 20;
 export const PRICE_PER_POUND_CENTS = 150;
 export const MINIMUM_ORDER_CENTS = MINIMUM_BILLABLE_WEIGHT_LB * PRICE_PER_POUND_CENTS;

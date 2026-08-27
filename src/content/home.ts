@@ -1,12 +1,70 @@
+import {
+  MINIMUM_ORDER_CENTS,
+  PRICE_PER_POUND_CENTS,
+} from "@/lib/pricing/calculate-quote";
+import { DRY_CLEANING_MINIMUM_CENTS } from "@/lib/pricing/dry-cleaning-charge";
+import { dryCleaningPrices } from "@/content/dry-cleaning-prices";
+import { formatDollars } from "@/lib/format-currency";
+
+const dryCleaningStartingCents = Math.min(...dryCleaningPrices.map((entry) => entry.priceCents));
+
 export const home = {
   hero: {
     eyebrow: "Park Slope, Brooklyn",
     headline: "Your laundry, cared for like family.",
     subheadline:
-      "Wash & fold drop-off, plus free pickup & delivery across Park Slope. Family-owned, community-rooted, and never run by an app.",
+      "Wash & fold and dry cleaning, with free pickup & delivery across Park Slope. Family-owned, community-rooted, and never run by an app.",
     primaryCta: { label: "Book a Pickup", href: "/book" },
     secondaryCta: { label: "Call us", href: "tel" },
   },
+
+  services: {
+    heading: "One pickup, however you need it",
+    body: "Book Wash & Fold, Dry Cleaning & Ironing, or both together — everything comes back on the same trip.",
+    items: [
+      {
+        title: "Wash & Fold",
+        description: "Washed, dried, and folded, priced by the pound.",
+        priceHint: `${formatDollars(PRICE_PER_POUND_CENTS)}/lb, ${formatDollars(MINIMUM_ORDER_CENTS)} minimum`,
+        href: "/services/wash-and-fold",
+      },
+      {
+        title: "Dry Cleaning & Ironing",
+        description: "Counted, inspected, and quoted before it ever leaves our hands.",
+        priceHint: `From ${formatDollars(dryCleaningStartingCents)}/item, ${formatDollars(DRY_CLEANING_MINIMUM_CENTS)} minimum alone`,
+        href: "/services/dry-cleaning",
+      },
+    ],
+  },
+
+  howItWorks: {
+    heading: "How it works",
+    steps: [
+      {
+        title: "Book online",
+        description: "Tell us what you need and a preferred pickup window — takes about a minute.",
+      },
+      {
+        title: "We confirm",
+        description: "A real person on our team confirms your pickup time by phone.",
+      },
+      {
+        title: "We pick up",
+        description: "We collect your laundry, dry cleaning, or both, right from your door.",
+      },
+      {
+        title: "We deliver it back",
+        description: "Clean, folded, and pressed, dropped off on the schedule we agreed on.",
+      },
+    ],
+  },
+
+  pricingPreview: [
+    `${formatDollars(PRICE_PER_POUND_CENTS)}/lb Wash & Fold, ${formatDollars(MINIMUM_ORDER_CENTS)} minimum`,
+    `Dry Cleaning from ${formatDollars(dryCleaningStartingCents)}/item, ${formatDollars(DRY_CLEANING_MINIMUM_CENTS)} minimum alone`,
+    "Next-day standard, or 3–4 days for dry cleaning",
+    "Free pickup & delivery in our service area",
+  ],
 
   intro: {
     heading: "A neighborhood laundromat, run by Park Slope locals.",
