@@ -3,10 +3,12 @@ import {
   PRICE_PER_POUND_CENTS,
 } from "@/lib/pricing/calculate-quote";
 import { DRY_CLEANING_MINIMUM_CENTS } from "@/lib/pricing/dry-cleaning-charge";
-import { dryCleaningPrices } from "@/content/dry-cleaning-prices";
 import { formatDollars } from "@/lib/format-currency";
 
-const dryCleaningStartingCents = Math.min(...dryCleaningPrices.map((entry) => entry.priceCents));
+// Deliberately not a single "from $X" figure — the cheapest chart entry
+// (Laundry Shirt, $3) is washed/dried/ironed, not dry-cleaned, so leading
+// with it would misstate what a Dry Cleaning order actually starts at.
+const dryCleaningMinimumNote = `${formatDollars(DRY_CLEANING_MINIMUM_CENTS)} minimum for Dry Cleaning-only orders`;
 
 export const home = {
   hero: {
@@ -31,7 +33,7 @@ export const home = {
       {
         title: "Dry Cleaning & Ironing",
         description: "Counted, inspected, and quoted before it ever leaves our hands.",
-        priceHint: `From ${formatDollars(dryCleaningStartingCents)}/item, ${formatDollars(DRY_CLEANING_MINIMUM_CENTS)} minimum alone`,
+        priceHint: `Starting garment prices listed online · ${dryCleaningMinimumNote}`,
         href: "/services/dry-cleaning",
       },
     ],
@@ -46,7 +48,7 @@ export const home = {
       },
       {
         title: "We confirm",
-        description: "A real person on our team confirms your pickup time by phone.",
+        description: "A real person on our team confirms your pickup time by text or phone.",
       },
       {
         title: "We pick up",
@@ -61,7 +63,7 @@ export const home = {
 
   pricingPreview: [
     `${formatDollars(PRICE_PER_POUND_CENTS)}/lb Wash & Fold, ${formatDollars(MINIMUM_ORDER_CENTS)} minimum`,
-    `Dry Cleaning from ${formatDollars(dryCleaningStartingCents)}/item, ${formatDollars(DRY_CLEANING_MINIMUM_CENTS)} minimum alone`,
+    `Dry Cleaning: starting garment prices listed online, ${dryCleaningMinimumNote}`,
     "Next-day standard, or 3–4 days for dry cleaning",
     "Free pickup & delivery in our service area",
   ],
