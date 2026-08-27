@@ -92,7 +92,18 @@ export default async function AdminBookingDetailPage(props: PageProps<"/admin/bo
           />
         </div>
         <div className="mt-4">
-          <QuoteEditor booking={booking} />
+          {/*
+            QuoteEditor seeds its local input state from `booking` only on
+            mount (useState initializers don't re-run on prop changes).
+            Without a key tied to service_type, a changeServiceType save
+            would revalidate this page with a cleared booking row but React
+            would reuse the same component instance — leaving stale
+            weight/subtotal/surcharge/notes in the inputs, save-able back
+            onto the now-different-service-type booking. Keying on
+            id+service_type forces a remount (fresh useState initializers)
+            exactly when that staleness could occur.
+          */}
+          <QuoteEditor key={`${booking.id}:${booking.service_type}`} booking={booking} />
         </div>
       </section>
 
