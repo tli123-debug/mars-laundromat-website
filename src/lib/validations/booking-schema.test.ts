@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { bookingSchema, windowLabel } from "./booking-schema";
+import { bookingSchema, fieldsToResetOnServiceChange, windowLabel } from "./booking-schema";
 import { addDays, getBrooklynToday, getWindowsForDate } from "@/lib/booking-hours";
+import { getDryCleaningDeliveryDateOptions } from "@/lib/dry-cleaning-schedule";
 
 // Anchored 10 days out so "already started today" filtering never applies —
 // these tests exercise the rule logic (delivery-date-matches-speed,
@@ -17,6 +18,10 @@ function baseInput(overrides: Record<string, unknown> = {}) {
     name: "Jane Rivera",
     phone: "7185550134",
     address: "123 7th Ave, Brooklyn, NY 11215",
+    washAndFold: true,
+    dryCleaning: false,
+    dryCleaningItemDescription: "",
+    dryCleaningBagAcknowledgement: false,
     preferredPickupDate: FUTURE_PICKUP_DATE,
     preferredPickupTime: pickupWindows()[0],
     preferredDeliveryDate: addDays(FUTURE_PICKUP_DATE, 1),
@@ -27,6 +32,25 @@ function baseInput(overrides: Record<string, unknown> = {}) {
     companyWebsite: "",
     ...overrides,
   };
+}
+
+// Dry Cleaning-only and Both share the exact same scheduling rule, so both
+// helpers build on baseInput and only differ in washAndFold.
+function dryCleaningInput(overrides: Record<string, unknown> = {}) {
+  const [plusThree] = getDryCleaningDeliveryDateOptions(FUTURE_PICKUP_DATE);
+  return baseInput({
+    washAndFold: false,
+    dryCleaning: true,
+    dryCleaningBagAcknowledgement: true,
+    serviceSpeed: undefined,
+    preferredDeliveryDate: plusThree,
+    preferredDeliveryTime: getWindowsForDate(plusThree)[0].value,
+    ...overrides,
+  });
+}
+
+function bothInput(overrides: Record<string, unknown> = {}) {
+  return dryCleaningInput({ washAndFold: true, ...overrides });
 }
 
 describe("bookingSchema — delivery is required", () => {
@@ -160,6 +184,165 @@ describe("bookingSchema — same-day speed", () => {
   });
 });
 
+describe("bookingSchema — at least one service is required", () => {
+  it("rejects submission when neither Wash & Fold nor Dry Cleaning is selected", () => {
+    const result = bookingSchema.safeParse(baseInput({ washAndFold: false, dryCleaning: false }));
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts Wash & Fold alone", () => {
+    expect(bookingSchema.safeParse(baseInput({ washAndFold: true, dryCleaning: false })).success).toBe(
+      true
+    );
+  });
+
+  it("accepts Dry Cleaning alone", () => {
+    expect(bookingSchema.safeParse(dryCleaningInput()).success).toBe(true);
+  });
+
+  it("accepts both selected together", () => {
+    expect(bookingSchema.safeParse(bothInput()).success).toBe(true);
+  });
+});
+
+describe("bookingSchema — Dry Cleaning-only scheduling", () => {
+  it("accepts pickup+3 delivery", () => {
+    const [plusThree] = getDryCleaningDeliveryDateOptions(FUTURE_PICKUP_DATE);
+    const result = bookingSchema.safeParse(
+      dryCleaningInput({
+        preferredDeliveryDate: plusThree,
+        preferredDeliveryTime: getWindowsForDate(plusThree)[0].value,
+      })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts pickup+4 delivery", () => {
+    const [, plusFour] = getDryCleaningDeliveryDateOptions(FUTURE_PICKUP_DATE);
+    const result = bookingSchema.safeParse(
+      dryCleaningInput({
+        preferredDeliveryDate: plusFour,
+        preferredDeliveryTime: getWindowsForDate(plusFour)[0].value,
+      })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects delivery one day after pickup (too early)", () => {
+    const oneDayLater = addDays(FUTURE_PICKUP_DATE, 1);
+    const result = bookingSchema.safeParse(
+      dryCleaningInput({
+        preferredDeliveryDate: oneDayLater,
+        preferredDeliveryTime: getWindowsForDate(oneDayLater)[0].value,
+      })
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects delivery five days after pickup (too late)", () => {
+    const fiveDaysLater = addDays(FUTURE_PICKUP_DATE, 5);
+    const result = bookingSchema.safeParse(
+      dryCleaningInput({
+        preferredDeliveryDate: fiveDaysLater,
+        preferredDeliveryTime: getWindowsForDate(fiveDaysLater)[0].value,
+      })
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects same-day delivery", () => {
+    const result = bookingSchema.safeParse(
+      dryCleaningInput({
+        preferredDeliveryDate: FUTURE_PICKUP_DATE,
+        preferredDeliveryTime: pickupWindows()[1],
+      })
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it("does not require a serviceSpeed", () => {
+    expect(bookingSchema.safeParse(dryCleaningInput({ serviceSpeed: undefined })).success).toBe(true);
+  });
+});
+
+describe("bookingSchema — Both scheduling follows the same 3-4 day rule", () => {
+  it("accepts pickup+3 delivery", () => {
+    const [plusThree] = getDryCleaningDeliveryDateOptions(FUTURE_PICKUP_DATE);
+    const result = bookingSchema.safeParse(
+      bothInput({
+        preferredDeliveryDate: plusThree,
+        preferredDeliveryTime: getWindowsForDate(plusThree)[0].value,
+      })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts pickup+4 delivery", () => {
+    const [, plusFour] = getDryCleaningDeliveryDateOptions(FUTURE_PICKUP_DATE);
+    const result = bookingSchema.safeParse(
+      bothInput({
+        preferredDeliveryDate: plusFour,
+        preferredDeliveryTime: getWindowsForDate(plusFour)[0].value,
+      })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects delivery two days after pickup (too early)", () => {
+    const twoDaysLater = addDays(FUTURE_PICKUP_DATE, 2);
+    const result = bookingSchema.safeParse(
+      bothInput({
+        preferredDeliveryDate: twoDaysLater,
+        preferredDeliveryTime: getWindowsForDate(twoDaysLater)[0].value,
+      })
+    );
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("bookingSchema — Same-Day Rush is Wash & Fold-only", () => {
+  it("rejects a same-day delivery pattern smuggled into a Dry Cleaning-only booking", () => {
+    const result = bookingSchema.safeParse(
+      dryCleaningInput({
+        serviceSpeed: "same_day",
+        preferredDeliveryDate: FUTURE_PICKUP_DATE,
+        preferredDeliveryTime: "18:00",
+      })
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a same-day delivery pattern smuggled into a Both booking", () => {
+    const result = bookingSchema.safeParse(
+      bothInput({
+        serviceSpeed: "same_day",
+        preferredDeliveryDate: FUTURE_PICKUP_DATE,
+        preferredDeliveryTime: "18:00",
+      })
+    );
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("bookingSchema — bag separation acknowledgement", () => {
+  it("Dry Cleaning-only requires the acknowledgement", () => {
+    const result = bookingSchema.safeParse(dryCleaningInput({ dryCleaningBagAcknowledgement: false }));
+    expect(result.success).toBe(false);
+  });
+
+  it("Both requires the acknowledgement", () => {
+    const result = bookingSchema.safeParse(bothInput({ dryCleaningBagAcknowledgement: false }));
+    expect(result.success).toBe(false);
+  });
+
+  it("Wash & Fold-only does not require the acknowledgement", () => {
+    const result = bookingSchema.safeParse(
+      baseInput({ washAndFold: true, dryCleaning: false, dryCleaningBagAcknowledgement: false })
+    );
+    expect(result.success).toBe(true);
+  });
+});
+
 describe("bookingSchema — SMS consent", () => {
   it("rejects submission when consent isn't checked", () => {
     expect(bookingSchema.safeParse(baseInput({ smsConsent: false })).success).toBe(false);
@@ -188,5 +371,27 @@ describe("windowLabel", () => {
   it("returns null for a missing value", () => {
     expect(windowLabel(null)).toBeNull();
     expect(windowLabel(undefined)).toBeNull();
+  });
+});
+
+describe("fieldsToResetOnServiceChange", () => {
+  it("clears serviceSpeed and delivery date/time when dry cleaning becomes selected", () => {
+    expect(fieldsToResetOnServiceChange(true)).toEqual({
+      serviceSpeed: undefined,
+      preferredDeliveryDate: "",
+      preferredDeliveryTime: "",
+      dryCleaningItemDescription: "",
+      dryCleaningBagAcknowledgement: false,
+    });
+  });
+
+  it("resets serviceSpeed to standard and clears dry-cleaning fields when Wash & Fold-only is selected", () => {
+    expect(fieldsToResetOnServiceChange(false)).toEqual({
+      serviceSpeed: "standard",
+      preferredDeliveryDate: "",
+      preferredDeliveryTime: "",
+      dryCleaningItemDescription: "",
+      dryCleaningBagAcknowledgement: false,
+    });
   });
 });

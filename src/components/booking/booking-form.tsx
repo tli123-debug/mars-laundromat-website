@@ -19,6 +19,7 @@ import {
 import {
   bookingSchema,
   bookingFormDefaults,
+  fieldsToResetOnServiceChange,
   type BookingInput,
   type ServiceSpeed,
 } from "@/lib/validations/booking-schema";
@@ -30,6 +31,7 @@ import {
   isSameDayEligible,
   SAME_DAY_DELIVERY_WINDOW_START,
 } from "@/lib/booking-hours";
+import { getDryCleaningDeliveryDateOptions } from "@/lib/dry-cleaning-schedule";
 import { booking as bookingContent } from "@/content/booking";
 import { createBooking } from "@/app/(site)/book/actions";
 
@@ -71,6 +73,9 @@ export function BookingForm() {
   const pickupDate = watch("preferredPickupDate");
   const deliveryDate = watch("preferredDeliveryDate");
   const serviceSpeed = watch("serviceSpeed");
+  const washAndFold = watch("washAndFold");
+  const dryCleaning = watch("dryCleaning");
+  const washAndFoldOnly = washAndFold && !dryCleaning;
 
   const pickupWindowOptions = pickupDate
     ? serviceSpeed === "same_day"
@@ -134,6 +139,33 @@ export function BookingForm() {
     setSelectResetKey((key) => key + 1);
   }
 
+  /**
+   * Dry Cleaning/Both's equivalent of applySpeedDerivedFields() above — the
+   * delivery date is a fixed pickup+3/+4 pair instead of a speed-derived
+   * window. Mirrors that function's shape exactly: the delivery date is
+   * always recomputed (preserved across the change only if it's still one
+   * of the two valid options), and the delivery time is cleared only if it's
+   * no longer valid for the resulting date.
+   */
+  function applyDryCleaningDerivedFields(pickupDateValue: string) {
+    if (!pickupDateValue) return;
+
+    const [plusThree, plusFour] = getDryCleaningDeliveryDateOptions(pickupDateValue);
+    const currentDeliveryDate = getValues("preferredDeliveryDate");
+    const newDeliveryDate =
+      currentDeliveryDate === plusThree || currentDeliveryDate === plusFour
+        ? currentDeliveryDate
+        : plusThree;
+
+    setValue("preferredDeliveryDate", newDeliveryDate);
+    const validDeliveryTimes = new Set(getWindowsForDate(newDeliveryDate).map((w) => w.value));
+    const currentDeliveryTime = getValues("preferredDeliveryTime");
+    if (currentDeliveryTime && !validDeliveryTimes.has(currentDeliveryTime)) {
+      setValue("preferredDeliveryTime", "");
+    }
+    setSelectResetKey((key) => key + 1);
+  }
+
   function handlePickupDateChange(newPickupDate: string) {
     if (!newPickupDate) return;
 
@@ -145,7 +177,45 @@ export function BookingForm() {
       setValue("preferredPickupTime", "");
     }
 
-    applySpeedDerivedFields(getValues("serviceSpeed"), newPickupDate);
+    if (getValues("dryCleaning")) {
+      applyDryCleaningDerivedFields(newPickupDate);
+    } else {
+      const speed = getValues("serviceSpeed");
+      if (speed) applySpeedDerivedFields(speed, newPickupDate);
+    }
+  }
+
+  /**
+   * Handles either service-selection checkbox. Resets — via
+   * fieldsToResetOnServiceChange() — only fire when dryCleaning's own value
+   * actually changes: toggling washAndFold while dryCleaning stays constant
+   * (e.g. Both -> Dry Cleaning-only) never changes the applicable scheduling
+   * rule, so nothing needs to be cleared.
+   */
+  function handleServiceSelectionChange(field: "washAndFold" | "dryCleaning", checked: boolean) {
+    const dryCleaningBefore = getValues("dryCleaning");
+    setValue(field, checked);
+    const dryCleaningAfter = getValues("dryCleaning");
+
+    if (dryCleaningAfter !== dryCleaningBefore) {
+      const resets = fieldsToResetOnServiceChange(dryCleaningAfter);
+      setValue("serviceSpeed", resets.serviceSpeed);
+      setValue("preferredDeliveryDate", resets.preferredDeliveryDate);
+      setValue("preferredDeliveryTime", resets.preferredDeliveryTime);
+      setValue("dryCleaningItemDescription", resets.dryCleaningItemDescription);
+      setValue("dryCleaningBagAcknowledgement", resets.dryCleaningBagAcknowledgement);
+      setSelectResetKey((key) => key + 1);
+    }
+
+    const pickupDateValue = getValues("preferredPickupDate");
+    if (!pickupDateValue) return;
+
+    if (dryCleaningAfter) {
+      applyDryCleaningDerivedFields(pickupDateValue);
+    } else {
+      const speed = getValues("serviceSpeed");
+      if (speed) applySpeedDerivedFields(speed, pickupDateValue);
+    }
   }
 
   const pickupDateField = register("preferredPickupDate");
@@ -175,14 +245,108 @@ export function BookingForm() {
         />
       </div>
 
-      <div className="rounded-2xl border border-border bg-muted p-6">
-        <h3 className="text-sm font-semibold">{bookingContent.pricing.heading}</h3>
-        <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-          {bookingContent.pricing.items.map((item) => (
-            <li key={item}>• {item}</li>
-          ))}
-        </ul>
+      <div className="grid gap-3">
+        <Label>Which service(s) do you need?</Label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div
+            className={`flex items-start gap-3 rounded-2xl border p-4 ${
+              washAndFold ? "border-primary bg-muted" : "border-border"
+            }`}
+          >
+            <Checkbox
+              id="washAndFold"
+              className="mt-0.5"
+              checked={washAndFold === true}
+              onCheckedChange={(checked) => handleServiceSelectionChange("washAndFold", checked === true)}
+            />
+            <Label htmlFor="washAndFold" className="grid gap-1 font-normal">
+              <span className="text-sm font-semibold text-foreground">Wash & Fold</span>
+              <span className="text-sm font-normal text-muted-foreground">
+                Everyday laundry — washed, dried, and neatly folded.
+              </span>
+            </Label>
+          </div>
+          <div
+            className={`flex items-start gap-3 rounded-2xl border p-4 ${
+              dryCleaning ? "border-primary bg-muted" : "border-border"
+            }`}
+          >
+            <Checkbox
+              id="dryCleaning"
+              className="mt-0.5"
+              checked={dryCleaning === true}
+              onCheckedChange={(checked) => handleServiceSelectionChange("dryCleaning", checked === true)}
+            />
+            <Label htmlFor="dryCleaning" className="grid gap-1 font-normal">
+              <span className="text-sm font-semibold text-foreground">Dry Cleaning & Ironing</span>
+              <span className="text-sm font-normal text-muted-foreground">
+                Suits, dresses, and other garments — counted, inspected, and priced by our team.
+              </span>
+            </Label>
+          </div>
+        </div>
+        {errors.washAndFold && <p className="text-sm text-destructive">{errors.washAndFold.message}</p>}
       </div>
+
+      {washAndFold && (
+        <div className="rounded-2xl border border-border bg-muted p-6">
+          <h3 className="text-sm font-semibold">{bookingContent.pricing.heading}</h3>
+          <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+            {bookingContent.pricing.items.map((item) => (
+              <li key={item}>• {item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {dryCleaning && (
+        <div className="rounded-2xl border border-border bg-muted p-6">
+          <h3 className="text-sm font-semibold">Dry Cleaning & Ironing</h3>
+          <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+            {(washAndFold ? bookingContent.dryCleaning.bothItems : bookingContent.dryCleaning.onlyItems).map(
+              (item) => (
+                <li key={item}>• {item}</li>
+              )
+            )}
+          </ul>
+          <div className="mt-4 grid gap-2">
+            <Label htmlFor="dryCleaningItemDescription">
+              {bookingContent.dryCleaning.itemDescriptionLabel}
+            </Label>
+            <Textarea
+              id="dryCleaningItemDescription"
+              rows={2}
+              placeholder={bookingContent.dryCleaning.itemDescriptionPlaceholder}
+              {...register("dryCleaningItemDescription")}
+            />
+          </div>
+          <div className="mt-4 grid gap-2">
+            <div className="flex items-start gap-3">
+              <Controller
+                control={control}
+                name="dryCleaningBagAcknowledgement"
+                render={({ field }) => (
+                  <Checkbox
+                    id="dryCleaningBagAcknowledgement"
+                    className="mt-0.5"
+                    checked={field.value === true}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
+                  />
+                )}
+              />
+              <Label
+                htmlFor="dryCleaningBagAcknowledgement"
+                className="text-sm font-normal leading-snug text-muted-foreground"
+              >
+                {bookingContent.dryCleaning.bagAcknowledgementLabel}
+              </Label>
+            </div>
+            {errors.dryCleaningBagAcknowledgement && (
+              <p className="text-sm text-destructive">{errors.dryCleaningBagAcknowledgement.message}</p>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-2">
         <Label htmlFor="name">Full name</Label>
@@ -209,46 +373,48 @@ export function BookingForm() {
         )}
       </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="serviceSpeed">Service speed</Label>
-        <Controller
-          control={control}
-          name="serviceSpeed"
-          render={({ field }) => (
-            <Select
-              key={selectResetKey}
-              value={field.value}
-              onValueChange={(value) => {
-                field.onChange(value);
-                applySpeedDerivedFields(value as ServiceSpeed, getValues("preferredPickupDate"));
-              }}
-            >
-              <SelectTrigger id="serviceSpeed" className="w-full">
-                <SelectValue placeholder="Choose a service speed" />
-              </SelectTrigger>
-              <SelectContent>
-                {SERVICE_SPEED_OPTIONS.map((option) => (
-                  <SelectItem
-                    key={option.value}
-                    value={option.value}
-                    disabled={
-                      option.value === "same_day" && Boolean(pickupDate) && !sameDayEligible
-                    }
-                  >
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {washAndFoldOnly && (
+        <div className="grid gap-2">
+          <Label htmlFor="serviceSpeed">Service speed</Label>
+          <Controller
+            control={control}
+            name="serviceSpeed"
+            render={({ field }) => (
+              <Select
+                key={selectResetKey}
+                value={field.value}
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  applySpeedDerivedFields(value as ServiceSpeed, getValues("preferredPickupDate"));
+                }}
+              >
+                <SelectTrigger id="serviceSpeed" className="w-full">
+                  <SelectValue placeholder="Choose a service speed" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SERVICE_SPEED_OPTIONS.map((option) => (
+                    <SelectItem
+                      key={option.value}
+                      value={option.value}
+                      disabled={
+                        option.value === "same_day" && Boolean(pickupDate) && !sameDayEligible
+                      }
+                    >
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {errors.serviceSpeed && (
+            <p className="text-sm text-destructive">{errors.serviceSpeed.message}</p>
           )}
-        />
-        {errors.serviceSpeed && (
-          <p className="text-sm text-destructive">{errors.serviceSpeed.message}</p>
-        )}
-        {serviceSpeed === "same_day" && (
-          <p className="text-sm text-muted-foreground">{bookingContent.sameDay.disclosure}</p>
-        )}
-      </div>
+          {serviceSpeed === "same_day" && (
+            <p className="text-sm text-muted-foreground">{bookingContent.sameDay.disclosure}</p>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="grid gap-2">
@@ -303,7 +469,39 @@ export function BookingForm() {
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="preferredDeliveryDate">Delivery date</Label>
-          {serviceSpeed === "flexible" ? (
+          {dryCleaning ? (
+            <Controller
+              control={control}
+              name="preferredDeliveryDate"
+              render={({ field }) => (
+                <Select
+                  key={selectResetKey}
+                  value={field.value}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    const validTimes = new Set(getWindowsForDate(value).map((w) => w.value));
+                    const currentTime = getValues("preferredDeliveryTime");
+                    if (currentTime && !validTimes.has(currentTime)) {
+                      setValue("preferredDeliveryTime", "");
+                    }
+                  }}
+                  disabled={!pickupDate}
+                >
+                  <SelectTrigger id="preferredDeliveryDate" className="w-full">
+                    <SelectValue placeholder="Choose a delivery date" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pickupDate &&
+                      getDryCleaningDeliveryDateOptions(pickupDate).map((date, index) => (
+                        <SelectItem key={date} value={date}>
+                          {formatDateDisplay(date)} ({index === 0 ? "3 days later" : "4 days later"})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          ) : serviceSpeed === "flexible" ? (
             <Controller
               control={control}
               name="preferredDeliveryDate"
@@ -352,6 +550,9 @@ export function BookingForm() {
           )}
           {errors.preferredDeliveryDate && (
             <p className="text-sm text-destructive">{errors.preferredDeliveryDate.message}</p>
+          )}
+          {dryCleaning && (
+            <p className="text-sm text-muted-foreground">{bookingContent.dryCleaning.deliveryNotice}</p>
           )}
         </div>
         <div className="grid gap-2">

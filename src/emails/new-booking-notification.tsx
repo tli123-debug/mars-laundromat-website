@@ -10,12 +10,20 @@ import {
   Row,
   Text,
 } from "@react-email/components";
-import { windowLabel, type ServiceSpeed } from "@/lib/validations/booking-schema";
+import { windowLabel } from "@/lib/validations/booking-schema";
+import type { ServiceSpeed, ServiceType } from "@/types/database.types";
 
 const SERVICE_SPEED_LABELS: Record<ServiceSpeed, string> = {
   standard: "Standard Next-Day",
   flexible: "Flexible 24–48 Hours",
   same_day: "Same-Day Rush",
+  dry_cleaning_timeline: "3–4 Day Turnaround",
+};
+
+const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
+  wash_and_fold: "Wash & Fold",
+  dry_cleaning: "Dry Cleaning & Ironing",
+  both: "Wash & Fold + Dry Cleaning & Ironing",
 };
 
 interface NewBookingNotificationProps {
@@ -27,7 +35,10 @@ interface NewBookingNotificationProps {
   preferredPickupTime: string;
   preferredDeliveryDate?: string | null;
   preferredDeliveryTime?: string | null;
+  serviceType: ServiceType;
   serviceSpeed: ServiceSpeed;
+  dryCleaningItemDescription?: string | null;
+  dryCleaningItemDescriptionZh?: string | null;
   specialInstructions?: string | null;
 }
 
@@ -40,7 +51,10 @@ export default function NewBookingNotification({
   preferredPickupTime,
   preferredDeliveryDate,
   preferredDeliveryTime,
+  serviceType,
   serviceSpeed,
+  dryCleaningItemDescription,
+  dryCleaningItemDescriptionZh,
   specialInstructions,
 }: NewBookingNotificationProps) {
   const isSameDay = serviceSpeed === "same_day";
@@ -84,7 +98,10 @@ export default function NewBookingNotification({
           <Row>
             <Column>
               <Text style={{ margin: "4px 0" }}>
-                <strong>Service speed:</strong> {SERVICE_SPEED_LABELS[serviceSpeed]}
+                <strong>Service:</strong> {SERVICE_TYPE_LABELS[serviceType]}
+              </Text>
+              <Text style={{ margin: "4px 0" }}>
+                <strong>Speed/turnaround:</strong> {SERVICE_SPEED_LABELS[serviceSpeed]}
               </Text>
               <Text style={{ margin: "4px 0" }}>
                 <strong>Name:</strong> {name}
@@ -104,6 +121,14 @@ export default function NewBookingNotification({
                   <strong>Requested delivery:</strong> {preferredDeliveryDate} at{" "}
                   {windowLabel(preferredDeliveryTime)}
                 </Text>
+              )}
+              {dryCleaningItemDescription && (
+                <Text style={{ margin: "4px 0" }}>
+                  <strong>Dry-cleaning items:</strong> {dryCleaningItemDescription}
+                </Text>
+              )}
+              {dryCleaningItemDescriptionZh && (
+                <Text style={{ margin: "4px 0", color: "#6b6255" }}>{dryCleaningItemDescriptionZh}</Text>
               )}
               {specialInstructions && (
                 <Text style={{ margin: "4px 0" }}>

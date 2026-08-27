@@ -5,6 +5,7 @@ import {
   PRICE_PER_POUND_CENTS,
   SAME_DAY_FEE_CENTS,
 } from "@/lib/pricing/calculate-quote";
+import { DRY_CLEANING_MINIMUM_CENTS } from "@/lib/pricing/dry-cleaning-charge";
 
 // Whole-dollar amounts ($30, $10) display with no decimals; anything with
 // actual cents ($1.50) keeps them — toFixed(0) alone would round 150 cents
@@ -39,5 +40,25 @@ export const booking = {
     checkboxLabel:
       "By checking this box, you agree to receive non-marketing text messages from Mars Laundromat about this booking, including confirmation, scheduling, quote, payment, and delivery updates. Message frequency varies. Message and data rates may apply. Reply STOP to opt out. If you opt out while an order is active, we may call you about it.",
     callInstead: `Don't want text updates? Call us at ${siteConfig.phoneNumber} and we'll help you book by phone instead.`,
+  },
+
+  dryCleaning: {
+    deliveryNotice: "Typically ready for delivery 3–4 calendar days after pickup.",
+    // Shown when Dry Cleaning is the only service selected.
+    onlyItems: [
+      `${dollars(DRY_CLEANING_MINIMUM_CENTS)} minimum for Dry Cleaning-only orders`,
+      "Starting prices are confirmed after we count and inspect your garments",
+    ],
+    // Shown when Dry Cleaning is combined with Wash & Fold.
+    bothItems: [
+      `Wash & Fold keeps its own ${dollars(MINIMUM_ORDER_CENTS)} minimum`,
+      "There's no separate Dry Cleaning minimum when it's combined with Wash & Fold",
+      "Starting prices are confirmed after we count and inspect your garments",
+      "Everything is returned together once the dry cleaning is ready",
+    ],
+    itemDescriptionLabel: "What dry-cleaning items are you sending? (optional)",
+    itemDescriptionPlaceholder: "2 suits, 3 shirts, 1 dress",
+    bagAcknowledgementLabel:
+      "I'll place my dry-cleaning items in a separate bag from my Wash & Fold laundry.",
   },
 } as const;

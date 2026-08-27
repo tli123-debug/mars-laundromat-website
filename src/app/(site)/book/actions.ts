@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { bookingSchema, type BookingInput } from "@/lib/validations/booking-schema";
 import { sendBookingNotification } from "@/lib/email/send-booking-notification";
 import { translateToChinese } from "@/lib/translate/translate-to-chinese";
+import { normalizeServiceType, resolveServiceSpeed, serviceTypeIncludesDryCleaning } from "@/lib/service-type";
 
 type ActionResult = { status: "success" | "error"; message: string };
 
@@ -18,6 +19,29 @@ export async function createBooking(input: BookingInput): Promise<ActionResult> 
     // Honeypot tripped — return a normal-looking success so bots don't learn it failed.
     return { status: "success", message: "Thanks! We'll be in touch shortly." };
   }
+
+  // Never trust a client-submitted service_type/service_speed directly —
+  // derive both from the validated washAndFold/dryCleaning booleans, same as
+  // every other Server Action in this codebase re-derives authoritative
+  // state rather than passing raw input through.
+  const serviceType = normalizeServiceType(parsed.data.washAndFold, parsed.data.dryCleaning);
+  if (!serviceType) {
+    // Unreachable: bookingSchema's superRefine already rejects
+    // washAndFold === false && dryCleaning === false. Defensive fallback
+    // only, so a future schema regression fails loudly instead of writing a
+    // malformed row.
+    console.error("createBooking: normalizeServiceType returned null after schema validation passed");
+    return { status: "error", message: "Please check the form and try again." };
+  }
+  const resolvedServiceSpeed = resolveServiceSpeed(serviceType, parsed.data.serviceSpeed ?? "standard");
+
+  // Only stored when the derived service type actually includes dry
+  // cleaning — a description submitted alongside a Wash & Fold-only
+  // selection (stale or adversarial) is dropped rather than saved against a
+  // booking it doesn't describe.
+  const dryCleaningItemDescription = serviceTypeIncludesDryCleaning(serviceType)
+    ? parsed.data.dryCleaningItemDescription || null
+    : null;
 
   // Generated here (not left to the DB default) so we have the id without
   // reading the row back — anon can only INSERT, not SELECT, so chaining
@@ -38,6 +62,15 @@ export async function createBooking(input: BookingInput): Promise<ActionResult> 
     }
   }
 
+  let dryCleaningItemDescriptionZh: string | null = null;
+  if (dryCleaningItemDescription) {
+    try {
+      dryCleaningItemDescriptionZh = await translateToChinese(dryCleaningItemDescription);
+    } catch (translateError) {
+      console.error(`Booking ${bookingId}: dry-cleaning description translation failed`, translateError);
+    }
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.from("bookings").insert({
     id: bookingId,
@@ -54,7 +87,10 @@ export async function createBooking(input: BookingInput): Promise<ActionResult> 
     contact_preference: "text",
     sms_consent: true,
     sms_consent_at: new Date().toISOString(),
-    service_speed: parsed.data.serviceSpeed,
+    service_type: serviceType,
+    service_speed: resolvedServiceSpeed,
+    dry_cleaning_item_description: dryCleaningItemDescription,
+    dry_cleaning_item_description_zh: dryCleaningItemDescriptionZh,
   });
 
   if (error) {
@@ -69,7 +105,14 @@ export async function createBooking(input: BookingInput): Promise<ActionResult> 
   // Email is best-effort only; a Resend hiccup must never surface as a
   // failure here, since the booking itself already succeeded.
   try {
-    await sendBookingNotification({ bookingId, booking: parsed.data });
+    await sendBookingNotification({
+      bookingId,
+      booking: parsed.data,
+      serviceType,
+      serviceSpeed: resolvedServiceSpeed,
+      dryCleaningItemDescription,
+      dryCleaningItemDescriptionZh,
+    });
   } catch (emailError) {
     console.error(`Booking ${bookingId}: notification email failed`, emailError);
   }
