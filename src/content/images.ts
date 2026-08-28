@@ -36,8 +36,12 @@ export const images = {
     alt: "The family who owns and runs Mars Laundromat",
   },
   washAndFold: {
-    src: "/images/interior.jpg",
-    alt: "Rows of washers and dryers inside Mars Laundromat",
+    src: "/images/wash-and-fold-service.jpg",
+    alt: "A Mars Laundromat employee tying closed a finished laundry bag between rows of washers and dryers",
+  },
+  dryCleaning: {
+    src: "/images/dry-cleaning-service.jpg",
+    alt: "Rows of cleaned garments hanging in clear protective bags on the dry-cleaning rack at Mars Laundromat",
   },
   pickupDelivery: {
     src: placeholder(1200, 900, "Pickup & Delivery"),

@@ -1,4 +1,6 @@
 import { siteConfig } from "@/content/site-config";
+import { ZELLE_RECIPIENT_DETAIL } from "@/content/payment";
+import { formatDollars } from "@/lib/format-currency";
 
 /**
  * Quick-action link builders for a booking's OWN phone/address — distinct
@@ -10,9 +12,37 @@ export function bookingPhoneHref(phone: string): string {
   return `tel:${phone.replace(/\D/g, "")}`;
 }
 
-/** No prefilled body — Milestone 7 adds templated, prefilled message bodies. */
-export function bookingSmsHref(phone: string): string {
-  return `sms:${phone.replace(/\D/g, "")}`;
+/**
+ * `body` is a query param, not part of the path — encoded the same way
+ * bookingMapsHref() encodes its query, since it's free text that can
+ * contain spaces, punctuation, and dollar signs. Omitting it keeps the
+ * original no-prefill behavior (the quick-action "Text" button) exactly as
+ * before; passing one is what buildQuoteTextMessage()'s assisted quote text
+ * uses.
+ */
+export function bookingSmsHref(phone: string, body?: string): string {
+  const base = `sms:${phone.replace(/\D/g, "")}`;
+  return body ? `${base}?body=${encodeURIComponent(body)}` : base;
+}
+
+/**
+ * The exact owner-approved assisted quote-text wording. ZELLE_RECIPIENT_DETAIL
+ * is null until the owner has real Zelle-ready details to share — once
+ * that's set, it's appended automatically and this function never needs to
+ * change again for that reason alone.
+ */
+export function buildQuoteTextMessage(customerName: string, quoteTotalCents: number): string {
+  const zelleDetail = ZELLE_RECIPIENT_DETAIL ? ` (Zelle: ${ZELLE_RECIPIENT_DETAIL})` : "";
+  return (
+    `Hi ${customerName}, this is Mars Laundromat. Your order total is ${formatDollars(quoteTotalCents)}. ` +
+    `Cash or Zelle accepted${zelleDetail}. You can pay cash at the door when we deliver. ` +
+    `Please reply if you have any questions.`
+  );
+}
+
+/** SMS deep link for the assisted quote-text button — see buildQuoteTextMessage(). */
+export function bookingQuoteTextHref(phone: string, customerName: string, quoteTotalCents: number): string {
+  return bookingSmsHref(phone, buildQuoteTextMessage(customerName, quoteTotalCents));
 }
 
 /**

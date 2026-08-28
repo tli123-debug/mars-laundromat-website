@@ -3,8 +3,9 @@
  * 20260819000000_pickup_delivery_windows_to_times.sql,
  * 20260820000000_add_paid_to_bookings.sql,
  * 20260821000000_add_special_instructions_zh_to_bookings.sql,
- * 20260822000000_pickup_delivery_v1.sql, and
- * 20260826000000_dry_cleaning_expansion.sql.
+ * 20260822000000_pickup_delivery_v1.sql,
+ * 20260826000000_dry_cleaning_expansion.sql, and
+ * 20260827000000_status_simplification_and_delete_policy.sql.
  * If the schema changes, update this alongside the migration (or regenerate via
  * `npx supabase gen types typescript --linked --schema public` once the project is CLI-linked).
  */
@@ -14,7 +15,6 @@ export type BookingStatus =
   | "confirmed"
   | "picked_up"
   | "ready_for_delivery"
-  | "out_for_delivery"
   | "completed"
   | "cancelled";
 

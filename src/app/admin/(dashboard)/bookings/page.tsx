@@ -15,6 +15,7 @@ import { PaymentControl } from "./payment-control";
 import { ServiceTypeBadge } from "./service-type-badge";
 import { BookingsFilters } from "./bookings-filters";
 import { isDateRangeOption, getDateRange, type DateRangeOption } from "./date-range";
+import { isBookingView, statusesForView, type BookingView } from "./view-filter";
 
 function formatDate(dateStr: string | null) {
   if (!dateStr) return null;
@@ -35,6 +36,8 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
   const searchParams = await props.searchParams;
   const rawRange = first(searchParams.range);
   const range: DateRangeOption = isDateRangeOption(rawRange) ? rawRange : "all-time";
+  const rawView = first(searchParams.view);
+  const view: BookingView = isBookingView(rawView) ? rawView : "active";
   const search = (first(searchParams.q) ?? "").trim();
 
   const supabase = await createClient();
@@ -43,6 +46,9 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
     .from("bookings")
     .select("*")
     .order("created_at", { ascending: false });
+
+  const statuses = statusesForView(view);
+  if (statuses) bookingsQuery = bookingsQuery.in("status", statuses);
 
   const { start, end } = getDateRange(range);
   if (start) bookingsQuery = bookingsQuery.gte("created_at", start.toISOString());
@@ -85,22 +91,22 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
       </p>
 
       <div className="mt-6">
-        <BookingsFilters currentRange={range} currentSearch={search} />
+        <BookingsFilters currentRange={range} currentSearch={search} currentView={view} />
       </div>
 
       <p className="mt-4 text-sm text-muted-foreground">
         {bookings.length} result{bookings.length === 1 ? "" : "s"}
       </p>
 
-      <div className="mt-2 overflow-hidden rounded-xl border border-border bg-background">
+      <div className="mt-2 overflow-x-auto rounded-xl border border-border bg-background">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Status</TableHead>
               <TableHead>Paid</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Pickup 取件</TableHead>
-              <TableHead>Delivery 送件</TableHead>
+              <TableHead className="min-w-[200px]">Customer</TableHead>
+              <TableHead className="min-w-[140px]">Pickup 取件</TableHead>
+              <TableHead className="min-w-[140px]">Delivery 送件</TableHead>
               <TableHead>Notes</TableHead>
               <TableHead>Requested</TableHead>
             </TableRow>
@@ -109,7 +115,11 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
             {bookings.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground">
-                  No bookings yet.
+                  {view === "active"
+                    ? "No active bookings."
+                    : view === "archived"
+                      ? "No archived bookings."
+                      : "No bookings yet."}
                 </TableCell>
               </TableRow>
             )}
@@ -153,7 +163,7 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
                     <span className="text-sm text-muted-foreground">—</span>
                   )}
                 </TableCell>
-                <TableCell className="max-w-[220px] whitespace-normal break-words">
+                <TableCell className="max-w-[320px] whitespace-normal break-words">
                   <span className="block text-sm text-muted-foreground">
                     {booking.special_instructions || "—"}
                   </span>

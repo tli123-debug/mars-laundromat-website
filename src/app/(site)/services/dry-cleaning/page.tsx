@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { dryCleaning } from "@/content/dry-cleaning";
 import { dryCleaningPrices } from "@/content/dry-cleaning-prices";
+import { images } from "@/content/images";
 import { formatDollars } from "@/lib/format-currency";
 
 export const metadata: Metadata = {
@@ -25,18 +27,31 @@ export default function DryCleaningPage() {
         </p>
       </section>
 
-      <section className="mx-auto max-w-4xl px-6 py-16">
-        <h2 className="font-display text-2xl font-semibold">{dryCleaning.howItWorks.heading}</h2>
-        <ul className="mt-5 space-y-3">
-          {dryCleaning.howItWorks.items.map((item) => (
-            <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-16">
+          <div className="md:order-2 relative aspect-[3/2] overflow-hidden rounded-2xl">
+            <Image
+              src={images.dryCleaning.src}
+              alt={images.dryCleaning.alt}
+              fill
+              sizes="(min-width: 768px) 40vw, 100vw"
+              className="object-cover"
+            />
+          </div>
+          <div className="md:order-1">
+            <h2 className="font-display text-2xl font-semibold">{dryCleaning.howItWorks.heading}</h2>
+            <ul className="mt-5 space-y-3">
+              {dryCleaning.howItWorks.items.map((item) => (
+                <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
 
-        <div className="mt-6 rounded-2xl bg-muted p-6">
+        <div className="mx-auto mt-10 max-w-3xl rounded-2xl bg-muted p-6">
           <p className="text-sm font-semibold">Separate bags, please</p>
           <p className="mt-1 text-sm text-muted-foreground">{dryCleaning.bagReminder}</p>
         </div>

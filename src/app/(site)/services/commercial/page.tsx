@@ -33,6 +33,25 @@ export default function CommercialPage() {
         </div>
       </section>
 
+      <section className="bg-muted py-16">
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="text-center">
+            <h2 className="font-display text-3xl font-semibold">{commercial.businessTypes.heading}</h2>
+            <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground">
+              {commercial.businessTypes.intro}
+            </p>
+          </div>
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {commercial.businessTypes.categories.map((category) => (
+              <div key={category.name} className="rounded-2xl bg-background p-6">
+                <h3 className="font-display text-lg font-semibold">{category.name}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{category.examples}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="border-t border-border bg-foreground py-16 text-background">
         <div className="mx-auto max-w-3xl px-6 text-center">
           <h2 className="font-display text-3xl font-semibold">{commercial.cta.heading}</h2>

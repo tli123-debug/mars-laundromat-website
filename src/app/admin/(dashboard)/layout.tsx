@@ -23,7 +23,7 @@ export default async function AdminDashboardLayout({
   return (
     <div className="min-h-screen bg-muted">
       <header className="border-b border-border bg-background">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-4">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4 px-6 py-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-primary">
               Mars Laundromat
@@ -48,7 +48,7 @@ export default async function AdminDashboardLayout({
           </form>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-6 py-10">{children}</main>
+      <main className="mx-auto max-w-[1600px] px-6 py-10">{children}</main>
     </div>
   );
 }

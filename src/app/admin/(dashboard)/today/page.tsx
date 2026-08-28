@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { createClient } from "@/lib/supabase/server";
-import { categorizeBooking, type BookingColumn } from "@/lib/categorize-booking";
+import { ACTIVE_BOOKING_STATUSES, categorizeBooking, type BookingColumn } from "@/lib/categorize-booking";
 import { getBrooklynToday } from "@/lib/booking-hours";
 import { BookingCard } from "./booking-card";
 import type { Database } from "@/types/database.types";
@@ -21,14 +21,22 @@ export default async function AdminTodayPage() {
   await requireAdmin();
 
   const supabase = await createClient();
-  // Cancelled bookings always categorize to [] (see categorize-booking.ts),
-  // so there's no need to fetch them at all. Everything else is fetched
-  // regardless of date — overdue/missed bookings from any day still need to
-  // surface (categorizeBooking uses <=, not =, for exactly this reason).
+  // Active statuses only — Completed and Cancelled must never appear on the
+  // Today board (this board is for bookings still in progress; both are
+  // terminal/archived, see ACTIVE_BOOKING_STATUSES). Note this is a real
+  // behavior change from the board's old cancelled-only exclusion: a
+  // Completed-but-unpaid booking (quote sent, never paid) used to still
+  // surface here via the "unpaid" column below, since categorizeBooking's
+  // unpaid check doesn't look at the main status branch at all. That safety
+  // net no longer applies to Completed bookings — an unpaid completed order
+  // is now only visible on the All Bookings page's Archived/All views.
+  // Everything Active is fetched regardless of date — overdue/missed
+  // bookings from any day still need to surface (categorizeBooking uses
+  // <=, not =, for exactly this reason).
   const { data: rows, error } = await supabase
     .from("bookings")
     .select("*")
-    .neq("status", "cancelled")
+    .in("status", ACTIVE_BOOKING_STATUSES)
     .order("created_at", { ascending: true });
 
   if (error) {

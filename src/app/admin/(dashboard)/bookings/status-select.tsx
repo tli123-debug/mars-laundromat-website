@@ -27,7 +27,6 @@ const STATUS_OPTIONS: { value: BookingStatus; label: string }[] = [
   { value: "confirmed", label: "Confirmed 已确认" },
   { value: "picked_up", label: "Picked Up 已取件" },
   { value: "ready_for_delivery", label: "Ready for Delivery 待送件" },
-  { value: "out_for_delivery", label: "Out for Delivery 配送中" },
   { value: "completed", label: "Completed 已完成" },
   { value: "cancelled", label: "Cancelled 已取消" },
 ];

@@ -11,6 +11,7 @@ import { calculateQuote } from "@/lib/pricing/calculate-quote";
 import { calculateDryCleaningEffectiveCharge, DRY_CLEANING_MINIMUM_CENTS } from "@/lib/pricing/dry-cleaning-charge";
 import { canApplySameDayFee, canMarkQuoteSentForServiceType, dollarsToCents } from "@/lib/quote-validation";
 import { serviceTypeIncludesDryCleaning, serviceTypeIncludesWashAndFold } from "@/lib/service-type";
+import { bookingQuoteTextHref } from "@/lib/booking-links";
 import type { Database } from "@/types/database.types";
 import { markQuoteSent, saveQuote } from "./actions";
 
@@ -248,14 +249,22 @@ export function QuoteEditor({ booking }: { booking: BookingRow }) {
         <Button size="sm" disabled={isPending} onClick={handleSave}>
           Save Quote 保存报价
         </Button>
+        {booking.quote_total_cents !== null && booking.quote_total_cents > 0 && (
+          <Button asChild size="sm" variant="outline">
+            <a href={bookingQuoteTextHref(booking.phone, booking.name, booking.quote_total_cents)}>
+              Text Quote 发报价短信
+            </a>
+          </Button>
+        )}
         <Button size="sm" variant="outline" disabled={isPending || !canSend} onClick={handleMarkSent}>
           Mark Quote as Sent 标记报价已发送
         </Button>
         <span className="text-sm text-muted-foreground">{QUOTE_STATUS_LABEL[booking.quote_status]}</span>
       </div>
       <p className="text-xs text-muted-foreground">
-        This doesn&apos;t send anything automatically — text or call the customer with the total first, then
-        mark it sent here.
+        Text Quote opens a prefilled message in your phone&apos;s texting app — nothing is sent
+        automatically. Review it, send it there, then come back and mark it sent here.
+        点击"发报价短信"会在手机短信应用中打开预填信息——不会自动发送。请核对后自行发送，返回后再点击"标记报价已发送"。
       </p>
     </div>
   );

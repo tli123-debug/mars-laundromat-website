@@ -9,6 +9,7 @@ import { bookingMapsHref, bookingPhoneHref, bookingSmsHref } from "@/lib/booking
 import { TimeEditor } from "./time-editor";
 import { QuoteEditor } from "./quote-editor";
 import { ServiceTypeSelect } from "./service-type-select";
+import { DeleteBooking } from "./delete-booking";
 
 function QuickActionLink({ href, label }: { href: string; label: string }) {
   return (
@@ -148,6 +149,8 @@ export default async function AdminBookingDetailPage(props: PageProps<"/admin/bo
           </div>
         </section>
       )}
+
+      <DeleteBooking bookingId={booking.id} customerName={booking.name} />
     </div>
   );
 }

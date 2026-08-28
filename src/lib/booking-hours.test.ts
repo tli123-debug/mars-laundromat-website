@@ -7,28 +7,23 @@ import {
   getSameDayEligibleWindows,
   getWindowsForDate,
   isSameDayEligible,
-  isWeekend,
   rangeLabel,
-  storeHoursFor,
-  weekdayOf,
 } from "./booking-hours";
 
-describe("weekdayOf / addDays — calendar arithmetic", () => {
-  it("weekdayOf matches native Date's UTC day-of-week", () => {
-    const dates = [
-      "2026-08-17",
-      "2026-08-18",
-      "2026-08-19",
-      "2026-08-20",
-      "2026-08-21",
-      "2026-08-22",
-      "2026-08-23",
-    ];
-    for (const date of dates) {
-      expect(weekdayOf(date)).toBe(new Date(`${date}T00:00:00Z`).getUTCDay());
-    }
-  });
+const FIXED_WINDOW_VALUES = [
+  "09:00",
+  "10:00",
+  "11:00",
+  "12:00",
+  "13:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
+  "18:00",
+];
 
+describe("addDays — calendar arithmetic", () => {
   it("advances by whole calendar days, including across a month boundary", () => {
     expect(addDays("2026-08-30", 1)).toBe("2026-08-31");
     expect(addDays("2026-08-31", 1)).toBe("2026-09-01");
@@ -40,37 +35,14 @@ describe("weekdayOf / addDays — calendar arithmetic", () => {
     expect(addDays("2026-03-07", 1)).toBe("2026-03-08");
     expect(addDays("2026-11-01", 1)).toBe("2026-11-02");
   });
-
-  it("isWeekend agrees with weekdayOf across a full week", () => {
-    const start = "2026-08-17";
-    for (let i = 0; i < 7; i++) {
-      const date = addDays(start, i);
-      const wd = weekdayOf(date);
-      expect(isWeekend(date)).toBe(wd === 0 || wd === 6);
-    }
-  });
 });
 
-describe("storeHoursFor — weekday vs weekend open time", () => {
-  it("opens 8:00 AM weekdays / 8:30 AM weekends, closes 7:00 PM every day, across a full week", () => {
-    const start = "2026-08-17";
-    for (let i = 0; i < 7; i++) {
-      const date = addDays(start, i);
-      const { openMinutes, closeMinutes } = storeHoursFor(date);
-      expect(closeMinutes).toBe(19 * 60);
-      expect(openMinutes).toBe(isWeekend(date) ? 8 * 60 + 30 : 8 * 60);
-    }
-  });
-});
-
-describe("getWindowsForDate — window generation", () => {
+describe("getWindowsForDate — fixed daily window generation", () => {
   const FAR_FUTURE = "2026-12-01"; // never affected by "already started" filtering
 
-  it("the last ordinary window starts at 6:00 PM, ending exactly at close", () => {
+  it("generates exactly the ten fixed windows, 9:00 AM through the 6:00 PM-7:00 PM close", () => {
     const windows = getWindowsForDate(FAR_FUTURE);
-    const last = windows[windows.length - 1];
-    expect(last.value).toBe("18:00");
-    expect(last.label).toBe("6:00 PM–7:00 PM");
+    expect(windows.map((w) => w.value)).toEqual(FIXED_WINDOW_VALUES);
   });
 
   it("every generated label is the complete one-hour range, not just the start", () => {
@@ -87,23 +59,23 @@ describe("getWindowsForDate — window generation", () => {
     }
   });
 
-  it("a window spanning noon still shows both AM and PM correctly (11:30 AM-12:30 PM)", () => {
+  it("the 11:00 AM and 12:00 PM windows correctly cross the noon boundary", () => {
     const windows = getWindowsForDate(FAR_FUTURE);
-    const noonSpanning = windows.find((w) => w.value === "11:30");
-    expect(noonSpanning?.label).toBe("11:30 AM–12:30 PM");
+    expect(windows.find((w) => w.value === "11:00")?.label).toBe("11:00 AM–12:00 PM");
+    expect(windows.find((w) => w.value === "12:00")?.label).toBe("12:00 PM–1:00 PM");
   });
 
-  it("weekday windows start at 08:00, weekend windows start at 08:30", () => {
+  it("the schedule is identical every day of the week — no weekday/weekend distinction", () => {
     // Pinned far from real "now" — without this, once real wall-clock time
     // ever catches up to this hardcoded range, `isToday` would flip true and
     // the result would start depending on what time of day the test happens
     // to run (this bit a prior version of this exact test).
     const now = new Date("2026-12-01T12:00:00Z");
-    const start = "2026-08-17";
+    const start = "2026-08-17"; // spans a full week, including both weekend days
     for (let i = 0; i < 7; i++) {
       const date = addDays(start, i);
       const windows = getWindowsForDate(date, { now });
-      expect(windows[0].value).toBe(isWeekend(date) ? "08:30" : "08:00");
+      expect(windows.map((w) => w.value)).toEqual(FIXED_WINDOW_VALUES);
     }
   });
 
@@ -111,9 +83,8 @@ describe("getWindowsForDate — window generation", () => {
     const now = new Date("2026-08-24T14:15:00Z"); // 10:15 AM EDT
     const today = getBrooklynToday(now);
     const windows = getWindowsForDate(today, { now, excludePast: false });
-    // Same first slot as any other date — nothing filtered by clock time.
-    expect(windows[0].value).toBe(isWeekend(today) ? "08:30" : "08:00");
-    expect(windows.some((w) => w.value === "09:00")).toBe(true);
+    // Nothing filtered by clock time — the full fixed set, same as any other date.
+    expect(windows.map((w) => w.value)).toEqual(FIXED_WINDOW_VALUES);
   });
 
   it("excludePast defaults to true, matching the existing public-form behavior", () => {
@@ -122,14 +93,16 @@ describe("getWindowsForDate — window generation", () => {
     const withDefault = getWindowsForDate(today, { now });
     const withExplicitTrue = getWindowsForDate(today, { now, excludePast: true });
     expect(withDefault).toEqual(withExplicitTrue);
-    expect(withDefault[0].value).toBe("10:30"); // matches the earlier "already-started" test
+    // 9:00 AM and 10:00 AM have both already started by 10:15 AM — first available is 11:00.
+    expect(withDefault[0].value).toBe("11:00");
   });
 
-  it("windows step every 30 minutes and never start after 18:00", () => {
+  it("windows never start before 9:00 or after 18:00, always exactly on the hour", () => {
     for (const w of getWindowsForDate(FAR_FUTURE)) {
+      expect(w.value >= "09:00").toBe(true);
       expect(w.value <= "18:00").toBe(true);
       const minute = Number(w.value.split(":")[1]);
-      expect([0, 30]).toContain(minute);
+      expect(minute).toBe(0);
     }
   });
 
@@ -137,27 +110,32 @@ describe("getWindowsForDate — window generation", () => {
     const now = new Date("2026-08-24T14:15:00Z"); // 10:15 AM EDT
     const today = getBrooklynToday(now);
     const windows = getWindowsForDate(today, { now });
-    expect(windows[0].value).toBe("10:30");
-    for (const w of windows) {
-      expect(w.value > "10:15").toBe(true);
-    }
+    expect(windows.map((w) => w.value)).toEqual([
+      "11:00",
+      "12:00",
+      "13:00",
+      "14:00",
+      "15:00",
+      "16:00",
+      "17:00",
+      "18:00",
+    ]);
   });
 
   it("does not filter by current time for a future date", () => {
     const now = new Date("2026-08-24T23:00:00Z"); // 7:00 PM EDT
     const future = addDays(getBrooklynToday(now), 3);
     const windows = getWindowsForDate(future, { now });
-    expect(windows[0].value).toBe(isWeekend(future) ? "08:30" : "08:00");
+    expect(windows[0].value).toBe("09:00");
   });
 });
 
 describe("getSameDayEligibleWindows / isSameDayEligible — the noon rule", () => {
-  it("the eligible set always ends at the 11:00 AM start (11:00 AM-12:00 PM window), never 11:30", () => {
+  it("the eligible set is exactly 9:00, 10:00, and 11:00 AM — never 12:00 PM", () => {
     const windows = getSameDayEligibleWindows("2026-12-01");
+    expect(windows.map((w) => w.value)).toEqual(["09:00", "10:00", "11:00"]);
     const last = windows[windows.length - 1];
-    expect(last.value).toBe("11:00");
     expect(last.label).toBe("11:00 AM–12:00 PM");
-    expect(windows.some((w) => w.value === "11:30")).toBe(false);
   });
 
   it("is eligible for a future date regardless of current time", () => {
@@ -208,7 +186,7 @@ describe("rangeLabel", () => {
     expect(rangeLabel(18 * 60)).toBe("6:00 PM–7:00 PM");
   });
 
-  it("crosses AM/PM correctly for a window spanning noon or midnight", () => {
+  it("crosses AM/PM correctly for any minute value — a pure formatter, independent of which values are real windows", () => {
     expect(rangeLabel(11 * 60 + 30)).toBe("11:30 AM–12:30 PM");
     expect(rangeLabel(23 * 60 + 30)).toBe("11:30 PM–12:30 AM");
   });

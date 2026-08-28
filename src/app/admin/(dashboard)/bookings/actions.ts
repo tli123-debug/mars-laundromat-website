@@ -11,7 +11,6 @@ const VALID_STATUSES: BookingStatus[] = [
   "confirmed",
   "picked_up",
   "ready_for_delivery",
-  "out_for_delivery",
   "completed",
   "cancelled",
 ];

@@ -9,11 +9,11 @@
  * customer booking from California at 9 PM Pacific is already past midnight
  * in Brooklyn, so using their local date would silently pick the wrong day.
  *
- * All calendar-date arithmetic (weekdayOf, addDays) is done by parsing the
- * "YYYY-MM-DD" string as UTC midnight, not local time. That's deliberate:
- * it's calendar math on a plain date, not a real moment in time, and
- * anchoring to UTC avoids DST-transition date-shift bugs that local-time
- * arithmetic is prone to.
+ * All calendar-date arithmetic (addDays) is done by parsing the "YYYY-MM-DD"
+ * string as UTC midnight, not local time. That's deliberate: it's calendar
+ * math on a plain date, not a real moment in time, and anchoring to UTC
+ * avoids DST-transition date-shift bugs that local-time arithmetic is prone
+ * to.
  *
  * Every function that depends on "now" accepts an injected `Date` (defaulting
  * to real time) so tests can pin a specific moment instead of being flaky
@@ -22,9 +22,23 @@
 
 export const STORE_TIMEZONE = "America/New_York";
 export const WINDOW_DURATION_MINUTES = 60;
-export const SLOT_INTERVAL_MINUTES = 30;
 export const SAME_DAY_LATEST_PICKUP_WINDOW_START = "11:00";
 export const SAME_DAY_DELIVERY_WINDOW_START = "18:00";
+
+/**
+ * Fixed daily pickup/delivery window start times, in minutes since midnight —
+ * identical every day of the week, no weekday/weekend distinction. The store
+ * itself opens earlier (8:00 AM weekdays / 8:30 AM weekends — see the
+ * advertised walk-in hours in src/content/site-config.ts), but that early
+ * morning is deliberately reserved for opening the store, not for
+ * pickup/delivery runs, so the first bookable window starts at 9:00 AM. Each
+ * window is exactly one hour and starts exactly where the previous one ends
+ * (never overlapping), through the last window ending exactly at 7:00 PM
+ * close.
+ */
+const BOOKING_WINDOW_START_MINUTES = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map(
+  (hour) => hour * 60
+);
 
 export interface TimeSlot {
   value: string;
@@ -64,29 +78,11 @@ export function getBrooklynNowMinutes(now: Date = new Date()): number {
   return hour * 60 + minute;
 }
 
-/** 0=Sun..6=Sat for a plain "YYYY-MM-DD" date. Timezone-independent. */
-export function weekdayOf(dateStr: string): number {
-  return new Date(`${dateStr}T00:00:00Z`).getUTCDay();
-}
-
-export function isWeekend(dateStr: string): boolean {
-  const day = weekdayOf(dateStr);
-  return day === 0 || day === 6;
-}
-
 /** "YYYY-MM-DD" plus/minus whole days, DST-safe (UTC-anchored). */
 export function addDays(dateStr: string, days: number): string {
   const date = new Date(`${dateStr}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
-}
-
-/** Open 8:00 AM weekdays / 8:30 AM weekends; close 7:00 PM every day. */
-export function storeHoursFor(dateStr: string): { openMinutes: number; closeMinutes: number } {
-  return {
-    openMinutes: isWeekend(dateStr) ? 8 * 60 + 30 : 8 * 60,
-    closeMinutes: 19 * 60,
-  };
 }
 
 export function formatClockLabel(totalMinutes: number): string {
@@ -119,26 +115,25 @@ function minutesToValue(totalMinutes: number): string {
 }
 
 /**
- * Every 1-hour window's start time for a given date, every 30 minutes, from
- * store open through the last start that still ends by close (close - 1hr).
- * When dateStr is Brooklyn-today, windows that have already started are
- * excluded — unless `excludePast: false`, which admin staff backfilling data
- * later the same day need (selecting an earlier-today window that's already
- * passed by clock time), a case the public form correctly forbids by default.
+ * The fixed daily window set for a given date — always the same ten
+ * non-overlapping one-hour windows (9:00 AM through the 6:00–7:00 PM close),
+ * every day of the week. When dateStr is Brooklyn-today, windows that have
+ * already started are excluded — unless `excludePast: false`, which admin
+ * staff backfilling data later the same day need (selecting an earlier-today
+ * window that's already passed by clock time), a case the public form
+ * correctly forbids by default.
  */
 export function getWindowsForDate(
   dateStr: string,
   opts: { now?: Date; excludePast?: boolean } = {}
 ): TimeSlot[] {
-  const { openMinutes, closeMinutes } = storeHoursFor(dateStr);
-  const lastStart = closeMinutes - WINDOW_DURATION_MINUTES;
   const now = opts.now ?? new Date();
   const excludePast = opts.excludePast ?? true;
   const isToday = dateStr === getBrooklynToday(now);
   const nowMinutes = isToday && excludePast ? getBrooklynNowMinutes(now) : -1;
 
   const slots: TimeSlot[] = [];
-  for (let total = openMinutes; total <= lastStart; total += SLOT_INTERVAL_MINUTES) {
+  for (const total of BOOKING_WINDOW_START_MINUTES) {
     if (isToday && total <= nowMinutes) continue;
     slots.push({ value: minutesToValue(total), label: rangeLabel(total) });
   }

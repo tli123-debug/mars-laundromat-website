@@ -1,10 +1,28 @@
-import type { Database } from "@/types/database.types";
+import type { BookingStatus, Database } from "@/types/database.types";
 
 type BookingRow = Database["public"]["Tables"]["bookings"]["Row"];
 type CategorizableBooking = Pick<
   BookingRow,
   "status" | "confirmed_pickup_date" | "confirmed_delivery_date" | "paid" | "quote_status"
 >;
+
+/**
+ * Active vs Archived is a coarser lifecycle split than the Today-board
+ * columns below: Active is every non-terminal status (still something to
+ * do), Archived is either terminal status (done, nothing left to do). No
+ * archived_at column exists — the terminal status itself is the archive
+ * boundary. Shared by the Today board (must only ever fetch Active
+ * bookings) and the All Bookings page's Active/Archived/All filter
+ * (src/app/admin/(dashboard)/bookings/view-filter.ts), so the two views can
+ * never silently disagree about what counts as archived.
+ */
+export const ACTIVE_BOOKING_STATUSES: BookingStatus[] = [
+  "pending",
+  "confirmed",
+  "picked_up",
+  "ready_for_delivery",
+];
+export const ARCHIVED_BOOKING_STATUSES: BookingStatus[] = ["completed", "cancelled"];
 
 export type BookingColumn =
   | "pending_review"
@@ -65,7 +83,7 @@ export function categorizeBooking(booking: CategorizableBooking, today: string):
   }
 
   if (
-    (booking.status === "ready_for_delivery" || booking.status === "out_for_delivery") &&
+    booking.status === "ready_for_delivery" &&
     (booking.confirmed_delivery_date === null || booking.confirmed_delivery_date <= today)
   ) {
     columns.push("todays_deliveries");

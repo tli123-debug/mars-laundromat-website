@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { categorizeBooking, type BookingColumn } from "./categorize-booking";
+import {
+  ACTIVE_BOOKING_STATUSES,
+  ARCHIVED_BOOKING_STATUSES,
+  categorizeBooking,
+  type BookingColumn,
+} from "./categorize-booking";
 import type { BookingStatus, QuoteStatus } from "@/types/database.types";
 
 const TODAY = "2026-08-24";
@@ -54,22 +59,6 @@ describe("categorizeBooking — the table from the plan", () => {
       TODAY
     );
     expect(result).toEqual(["at_store"]);
-  });
-
-  it("out_for_delivery, delivery yesterday -> todays_deliveries", () => {
-    const result = categorizeBooking(
-      booking({ status: "out_for_delivery", confirmed_delivery_date: YESTERDAY }),
-      TODAY
-    );
-    expect(result).toEqual(["todays_deliveries"]);
-  });
-
-  it("out_for_delivery, delivery tomorrow -> [] (legitimately future)", () => {
-    const result = categorizeBooking(
-      booking({ status: "out_for_delivery", confirmed_delivery_date: TOMORROW }),
-      TODAY
-    );
-    expect(result).toEqual([]);
   });
 
   it("cancelled, unpaid, quote sent -> [] (not unpaid — closes the leak)", () => {
@@ -137,15 +126,13 @@ describe("categorizeBooking — targeted invariants (not a blanket never-empty c
     }
   });
 
-  it("invariant C: ready_for_delivery/out_for_delivery + confirmed_delivery_date <= today always includes todays_deliveries", () => {
-    for (const status of ["ready_for_delivery", "out_for_delivery"] as const) {
-      for (const date of [YESTERDAY, TODAY]) {
-        const result = categorizeBooking(
-          booking({ status, confirmed_delivery_date: date }),
-          TODAY
-        );
-        expect(result).toContain("todays_deliveries");
-      }
+  it("invariant C: ready_for_delivery + confirmed_delivery_date <= today always includes todays_deliveries", () => {
+    for (const date of [YESTERDAY, TODAY]) {
+      const result = categorizeBooking(
+        booking({ status: "ready_for_delivery", confirmed_delivery_date: date }),
+        TODAY
+      );
+      expect(result).toContain("todays_deliveries");
     }
   });
 
@@ -155,7 +142,6 @@ describe("categorizeBooking — targeted invariants (not a blanket never-empty c
       "confirmed",
       "picked_up",
       "ready_for_delivery",
-      "out_for_delivery",
       "completed",
     ];
     for (const status of nonCancelledStatuses) {
@@ -207,6 +193,27 @@ describe("categorizeBooking — intentional absences", () => {
       TODAY
     );
     expect(result).toEqual(["awaiting_customer"]);
+  });
+});
+
+describe("ACTIVE_BOOKING_STATUSES / ARCHIVED_BOOKING_STATUSES", () => {
+  const ALL_STATUSES: BookingStatus[] = [
+    "pending",
+    "confirmed",
+    "picked_up",
+    "ready_for_delivery",
+    "completed",
+    "cancelled",
+  ];
+
+  it("together cover every BookingStatus exactly once — no gaps, no overlap", () => {
+    const combined = [...ACTIVE_BOOKING_STATUSES, ...ARCHIVED_BOOKING_STATUSES].sort();
+    expect(combined).toEqual([...ALL_STATUSES].sort());
+    expect(new Set(combined).size).toBe(combined.length);
+  });
+
+  it("archived is exactly the two terminal statuses", () => {
+    expect([...ARCHIVED_BOOKING_STATUSES].sort()).toEqual(["cancelled", "completed"]);
   });
 });
 

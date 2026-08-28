@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { createClient } from "@/lib/supabase/server";
@@ -307,4 +308,33 @@ export async function changeServiceType(bookingId: string, newServiceType: unkno
 
   revalidateBookingPaths(bookingId);
   return { error: null };
+}
+
+/**
+ * Permanent, irreversible deletion — not the normal cleanup path (mark
+ * Completed/Cancelled and let it fall into the Archived view instead; see
+ * ACTIVE_BOOKING_STATUSES/ARCHIVED_BOOKING_STATUSES in categorize-booking.ts).
+ * This exists for genuine mistakes (test entries, duplicates, a booking
+ * created in error) that shouldn't linger in Archived/All forever.
+ * requireAdmin() is the application-level gate; the database also carries
+ * its own authenticated-only DELETE policy as a backstop (see
+ * supabase/migrations/20260827000000_status_simplification_and_delete_policy.sql).
+ * Redirects to the bookings list on success — there's no page left to
+ * revalidate once the row is gone, so only Today and the list itself are
+ * invalidated.
+ */
+export async function deleteBooking(bookingId: string) {
+  await requireAdmin();
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("bookings").delete().eq("id", bookingId);
+
+  if (error) {
+    console.error("Delete booking failed:", error);
+    return { error: "Something went wrong deleting that booking." };
+  }
+
+  revalidatePath("/admin/today");
+  revalidatePath("/admin/bookings");
+  redirect("/admin/bookings");
 }

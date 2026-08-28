@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getWindowsForDate, storeHoursFor } from "@/lib/booking-hours";
+import { getWindowsForDate } from "@/lib/booking-hours";
 import {
   buildApproveTimePayload,
   buildClearProposedTimePayload,
@@ -15,17 +15,17 @@ const PICKUP_DATE = "2026-09-14";
 const DELIVERY_DATE = "2026-09-15";
 
 describe("isValidStoreWindow", () => {
-  it("accepts the store's actual opening window for a given date", () => {
-    const { openMinutes } = storeHoursFor(PICKUP_DATE);
-    const openValue = `${String(Math.floor(openMinutes / 60)).padStart(2, "0")}:${String(openMinutes % 60).padStart(2, "0")}`;
-    expect(isValidStoreWindow(PICKUP_DATE, openValue)).toBe(true);
+  it("accepts the first fixed daily window (9:00 AM) for a given date", () => {
+    const firstWindow = getWindowsForDate(PICKUP_DATE, { excludePast: false })[0];
+    expect(firstWindow.value).toBe("09:00");
+    expect(isValidStoreWindow(PICKUP_DATE, firstWindow.value)).toBe(true);
   });
 
-  it("rejects a time before the store opens on any day", () => {
+  it("rejects a time before the fixed windows start on any day", () => {
     expect(isValidStoreWindow(PICKUP_DATE, "03:00")).toBe(false);
   });
 
-  it("rejects a time after the store closes on any day", () => {
+  it("rejects a time after the fixed windows end on any day", () => {
     expect(isValidStoreWindow(PICKUP_DATE, "23:30")).toBe(false);
   });
 
@@ -34,9 +34,8 @@ describe("isValidStoreWindow", () => {
   });
 
   it("still validates against past dates (excludePast: false) — staff may be backfilling", () => {
-    const { openMinutes } = storeHoursFor("2020-01-06");
-    const openValue = `${String(Math.floor(openMinutes / 60)).padStart(2, "0")}:${String(openMinutes % 60).padStart(2, "0")}`;
-    expect(isValidStoreWindow("2020-01-06", openValue)).toBe(true);
+    const firstWindow = getWindowsForDate("2020-01-06", { excludePast: false })[0];
+    expect(isValidStoreWindow("2020-01-06", firstWindow.value)).toBe(true);
   });
 });
 
@@ -224,7 +223,6 @@ describe("isPreLifecycle", () => {
   it("false for every status at or past picked_up", () => {
     expect(isPreLifecycle("picked_up")).toBe(false);
     expect(isPreLifecycle("ready_for_delivery")).toBe(false);
-    expect(isPreLifecycle("out_for_delivery")).toBe(false);
     expect(isPreLifecycle("completed")).toBe(false);
     expect(isPreLifecycle("cancelled")).toBe(false);
   });
@@ -243,7 +241,7 @@ describe("post-pickup status preservation — build*Payload never move status on
     confirmedDeliveryDate: DELIVERY_DATE,
     confirmedDeliveryTime: "09:00",
   };
-  const lockedStatuses = ["picked_up", "ready_for_delivery", "out_for_delivery", "completed", "cancelled"] as const;
+  const lockedStatuses = ["picked_up", "ready_for_delivery", "completed", "cancelled"] as const;
 
   it("buildApproveTimePayload sets status to confirmed pre-lifecycle", () => {
     expect(buildApproveTimePayload(preferred, "pending", "user-1").status).toBe("confirmed");

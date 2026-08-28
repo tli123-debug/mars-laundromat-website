@@ -167,8 +167,8 @@ describe("bookingSchema — same-day speed", () => {
     expect(bookingSchema.safeParse(sameDayInput("11:00")).success).toBe(true);
   });
 
-  it("rejects an 11:30 AM pickup window — ends after noon", () => {
-    expect(bookingSchema.safeParse(sameDayInput("11:30")).success).toBe(false);
+  it("rejects a 12:00 PM pickup window — starts after the Same-Day cutoff", () => {
+    expect(bookingSchema.safeParse(sameDayInput("12:00")).success).toBe(false);
   });
 
   it("requires delivery date to equal pickup date", () => {

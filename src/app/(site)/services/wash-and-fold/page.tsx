@@ -35,7 +35,14 @@ export default function WashAndFoldPage() {
 
       <section className="mx-auto max-w-6xl px-6 py-16">
         <div className="grid gap-10 md:grid-cols-2 md:items-center md:gap-16">
-          <div className="relative aspect-[4/3] overflow-hidden rounded-2xl">
+          {/*
+            The source photo is a portrait phone shot (EXIF-rotated 3:4, not
+            landscape) — aspect-[3/4] matches its true displayed shape so
+            object-cover has nothing to crop, keeping the employee and bag
+            fully in frame instead of cutting off top/bottom to force a
+            landscape box.
+          */}
+          <div className="relative aspect-[3/4] overflow-hidden rounded-2xl">
             <Image
               src={images.washAndFold.src}
               alt={images.washAndFold.alt}
