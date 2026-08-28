@@ -83,8 +83,10 @@ describe("bookingSchema — pickup date/time", () => {
     // Regression test: a malformed preferredPickupTime used to reach
     // getStandardFlexibleDeliveryWindows() unguarded, where valueToMinutes()
     // produced NaN and addDays(pickupDate, NaN) threw "RangeError: Invalid
-    // time value" instead of failing validation normally.
-    for (const malformed of ["not-a-time", "25:00", "10:75"]) {
+    // time value" instead of failing validation normally. Also covers the
+    // follow-up fix where an unanchored parser accepted a malformed value
+    // via its valid-looking "HH:MM" prefix (e.g. "18:00garbage").
+    for (const malformed of ["not-a-time", "25:00", "10:75", "18:00garbage", "18:00:99", "18:00:00garbage"]) {
       expect(() => bookingSchema.safeParse(baseInput({ preferredPickupTime: malformed }))).not.toThrow();
       const result = bookingSchema.safeParse(baseInput({ preferredPickupTime: malformed }));
       expect(result.success).toBe(false);

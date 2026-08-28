@@ -2,6 +2,7 @@ import {
   getSameDayEligibleWindows,
   getStandardFlexibleDeliveryWindows,
   getWindowsForDate,
+  normalizeStoredTime,
   SAME_DAY_DELIVERY_WINDOW_START,
   WINDOW_DURATION_MINUTES,
   addDays,
@@ -27,9 +28,17 @@ export interface ProposedTimeInput {
  * can't trust that; it must re-check the same source of truth itself.
  * excludePast: false because staff may legitimately be backfilling an
  * earlier-today or past-dated correction, not just booking ahead.
+ *
+ * `time` is normalized before comparing since it may come straight from
+ * the database — a Postgres `time` column can serialize via PostgREST as
+ * either "HH:MM" or "HH:MM:SS", while generated window values are always
+ * "HH:MM". A malformed value normalizes to null and correctly matches
+ * nothing.
  */
 export function isValidStoreWindow(date: string, time: string): boolean {
-  return getWindowsForDate(date, { excludePast: false }).some((w) => w.value === time);
+  const normalized = normalizeStoredTime(time);
+  if (!normalized) return false;
+  return getWindowsForDate(date, { excludePast: false }).some((w) => w.value === normalized);
 }
 
 /**
@@ -106,13 +115,19 @@ export function validatePreferredTimeForServiceType(
   }
 
   if (serviceSpeed === "same_day") {
+    // input.pickupTime was already confirmed a valid store window above,
+    // but "valid store window" and "Same-Day eligible" are different sets
+    // — re-normalize here too since eligiblePickupTimes holds generated
+    // "HH:MM" values and input.pickupTime may still carry seconds.
+    const normalizedPickupTime = normalizeStoredTime(input.pickupTime);
     const eligiblePickupTimes = new Set(
       getSameDayEligibleWindows(input.pickupDate).map((w) => w.value)
     );
-    if (!eligiblePickupTimes.has(input.pickupTime)) {
+    if (!normalizedPickupTime || !eligiblePickupTimes.has(normalizedPickupTime)) {
       return "The requested pickup time is no longer Same-Day eligible.";
     }
-    if (input.deliveryDate !== input.pickupDate || input.deliveryTime !== SAME_DAY_DELIVERY_WINDOW_START) {
+    const normalizedDeliveryTime = normalizeStoredTime(input.deliveryTime);
+    if (input.deliveryDate !== input.pickupDate || normalizedDeliveryTime !== SAME_DAY_DELIVERY_WINDOW_START) {
       return "The requested Same-Day delivery no longer matches the fixed 6:00–7:00 PM window.";
     }
     return null;
@@ -124,12 +139,17 @@ export function validatePreferredTimeForServiceType(
   if (input.deliveryDate < minDeliveryDate || input.deliveryDate > maxDeliveryDate) {
     return "The requested delivery date is outside the valid range for this service speed.";
   }
+  // getStandardFlexibleDeliveryWindows() normalizes input.pickupTime
+  // internally (via valueToMinutes), but its returned .value entries are
+  // always generated "HH:MM" — input.deliveryTime still needs its own
+  // normalization before comparing against them.
+  const normalizedDeliveryTime = normalizeStoredTime(input.deliveryTime);
   const validDeliveryTimes = new Set(
     getStandardFlexibleDeliveryWindows(input.pickupDate, input.pickupTime, input.deliveryDate).map(
       (w) => w.value
     )
   );
-  if (!validDeliveryTimes.has(input.deliveryTime)) {
+  if (!normalizedDeliveryTime || !validDeliveryTimes.has(normalizedDeliveryTime)) {
     return "The requested delivery time doesn't allow the required gap after pickup.";
   }
   return null;

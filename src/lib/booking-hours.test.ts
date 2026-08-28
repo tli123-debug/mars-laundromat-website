@@ -9,6 +9,7 @@ import {
   getStandardFlexibleDeliveryWindows,
   getWindowsForDate,
   isSameDayEligible,
+  normalizeStoredTime,
   rangeLabel,
 } from "./booking-hours";
 
@@ -260,6 +261,72 @@ describe("earliestStandardFlexibleDelivery / getStandardFlexibleDeliveryWindows 
       expect(earliestStandardFlexibleDelivery(PICKUP_DATE, "")).toBeNull();
       expect(getStandardFlexibleDeliveryWindows(PICKUP_DATE, "", NEXT_DAY)).toEqual([]);
     });
+
+    it("rejects trailing garbage after a valid-looking HH:MM prefix, not just the prefix", () => {
+      for (const malformed of ["18:00garbage", "18:00:99", "18:00:00garbage"]) {
+        expect(() => earliestStandardFlexibleDelivery(PICKUP_DATE, malformed)).not.toThrow();
+        expect(earliestStandardFlexibleDelivery(PICKUP_DATE, malformed)).toBeNull();
+        expect(() => getStandardFlexibleDeliveryWindows(PICKUP_DATE, malformed, NEXT_DAY)).not.toThrow();
+        expect(getStandardFlexibleDeliveryWindows(PICKUP_DATE, malformed, NEXT_DAY)).toEqual([]);
+      }
+    });
+  });
+});
+
+describe("normalizeStoredTime", () => {
+  it("accepts HH:MM as-is", () => {
+    expect(normalizeStoredTime("09:00")).toBe("09:00");
+    expect(normalizeStoredTime("18:00")).toBe("18:00");
+  });
+
+  it("accepts Postgres's HH:MM:SS and normalizes it down to HH:MM", () => {
+    expect(normalizeStoredTime("09:00:00")).toBe("09:00");
+    expect(normalizeStoredTime("18:00:00")).toBe("18:00");
+    expect(normalizeStoredTime("11:30:45")).toBe("11:30"); // seconds are dropped, not just zero ones
+  });
+
+  it("rejects an out-of-range hour", () => {
+    expect(normalizeStoredTime("25:00")).toBeNull();
+  });
+
+  it("rejects an out-of-range minute", () => {
+    expect(normalizeStoredTime("10:75")).toBeNull();
+  });
+
+  it("rejects out-of-range seconds even when hours and minutes are valid", () => {
+    expect(normalizeStoredTime("18:00:99")).toBeNull();
+  });
+
+  it("rejects trailing garbage after a valid-looking HH:MM prefix", () => {
+    expect(normalizeStoredTime("18:00garbage")).toBeNull();
+  });
+
+  it("rejects trailing garbage after a valid-looking HH:MM:SS prefix", () => {
+    expect(normalizeStoredTime("18:00:00garbage")).toBeNull();
+  });
+
+  it("rejects a non-time string", () => {
+    expect(normalizeStoredTime("not-a-time")).toBeNull();
+  });
+
+  it("rejects an empty string", () => {
+    expect(normalizeStoredTime("")).toBeNull();
+  });
+
+  it("never throws, for any of the above", () => {
+    for (const value of [
+      "09:00",
+      "18:00:00",
+      "25:00",
+      "10:75",
+      "18:00:99",
+      "18:00garbage",
+      "18:00:00garbage",
+      "not-a-time",
+      "",
+    ]) {
+      expect(() => normalizeStoredTime(value)).not.toThrow();
+    }
   });
 });
 

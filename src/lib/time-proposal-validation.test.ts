@@ -38,6 +38,23 @@ describe("isValidStoreWindow", () => {
     const firstWindow = getWindowsForDate("2020-01-06", { excludePast: false })[0];
     expect(isValidStoreWindow("2020-01-06", firstWindow.value)).toBe(true);
   });
+
+  it("accepts a stored HH:MM:SS value that matches a real window once normalized", () => {
+    // PostgREST can serialize a Postgres `time` column with seconds — a
+    // legitimately valid stored time must not be rejected just because it
+    // arrives as "09:00:00" instead of the generated "09:00".
+    expect(isValidStoreWindow(PICKUP_DATE, "09:00:00")).toBe(true);
+  });
+
+  it("rejects trailing garbage after a valid-looking prefix, without throwing", () => {
+    expect(() => isValidStoreWindow(PICKUP_DATE, "18:00garbage")).not.toThrow();
+    expect(isValidStoreWindow(PICKUP_DATE, "18:00garbage")).toBe(false);
+  });
+
+  it("rejects invalid seconds, without throwing", () => {
+    expect(() => isValidStoreWindow(PICKUP_DATE, "18:00:99")).not.toThrow();
+    expect(isValidStoreWindow(PICKUP_DATE, "18:00:99")).toBe(false);
+  });
 });
 
 describe("isDeliveryNotBeforePickup", () => {
@@ -183,6 +200,16 @@ describe("validatePreferredTimeForServiceType", () => {
       expect(result).toBeNull();
     });
 
+    it("accepts valid HH:MM:SS pickup and delivery values, as PostgREST may actually return them", () => {
+      const result = validatePreferredTimeForServiceType("wash_and_fold", "standard", {
+        pickupDate: FAR_FUTURE_PICKUP,
+        pickupTime: "09:00:00",
+        deliveryDate: "2026-12-02",
+        deliveryTime: "09:00:00",
+      });
+      expect(result).toBeNull();
+    });
+
     it("rejects a legacy request that predates the 22-hour gap rule", () => {
       const result = validatePreferredTimeForServiceType("wash_and_fold", "standard", {
         pickupDate: FAR_FUTURE_PICKUP,
@@ -234,6 +261,16 @@ describe("validatePreferredTimeForServiceType", () => {
       });
       expect(result).toMatch(/Same-Day eligible/i);
     });
+
+    it("accepts '11:00:00' pickup and '18:00:00' delivery, as PostgREST may actually return them", () => {
+      const result = validatePreferredTimeForServiceType("wash_and_fold", "same_day", {
+        pickupDate: FAR_FUTURE_PICKUP,
+        pickupTime: "11:00:00",
+        deliveryDate: FAR_FUTURE_PICKUP,
+        deliveryTime: "18:00:00",
+      });
+      expect(result).toBeNull();
+    });
   });
 
   describe("Dry Cleaning / Both", () => {
@@ -266,6 +303,51 @@ describe("validatePreferredTimeForServiceType", () => {
       });
       expect(result).toMatch(/fourth calendar day/i);
     });
+
+    it("accepts valid HH:MM:SS values on day 4, as PostgREST may actually return them", () => {
+      const dryCleaningOnly = validatePreferredTimeForServiceType("dry_cleaning", "dry_cleaning_timeline", {
+        pickupDate: FAR_FUTURE_PICKUP,
+        pickupTime: "09:00:00",
+        deliveryDate: "2026-12-05", // pickup+4
+        deliveryTime: "09:00:00",
+      });
+      const both = validatePreferredTimeForServiceType("both", "dry_cleaning_timeline", {
+        pickupDate: FAR_FUTURE_PICKUP,
+        pickupTime: "09:00:00",
+        deliveryDate: "2026-12-05",
+        deliveryTime: "09:00:00",
+      });
+      expect(dryCleaningOnly).toBeNull();
+      expect(both).toBeNull();
+    });
+  });
+
+  it("rejects malformed stored times without throwing, across every service type", () => {
+    const malformedValues = ["not-a-time", "25:00", "10:75", "18:00garbage", "18:00:99", "18:00:00garbage"];
+    for (const malformed of malformedValues) {
+      for (const [serviceType, serviceSpeed] of [
+        ["wash_and_fold", "standard"],
+        ["wash_and_fold", "same_day"],
+        ["dry_cleaning", "dry_cleaning_timeline"],
+      ] as const) {
+        expect(() =>
+          validatePreferredTimeForServiceType(serviceType, serviceSpeed, {
+            pickupDate: FAR_FUTURE_PICKUP,
+            pickupTime: malformed,
+            deliveryDate: FAR_FUTURE_PICKUP,
+            deliveryTime: "09:00",
+          })
+        ).not.toThrow();
+        expect(() =>
+          validatePreferredTimeForServiceType(serviceType, serviceSpeed, {
+            pickupDate: FAR_FUTURE_PICKUP,
+            pickupTime: "09:00",
+            deliveryDate: FAR_FUTURE_PICKUP,
+            deliveryTime: malformed,
+          })
+        ).not.toThrow();
+      }
+    }
   });
 
   it("does not restrict the manual proposed-time editor — isValidStoreWindow allows a pickup+3 Dry Cleaning date staff confirm by hand", () => {

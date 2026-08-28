@@ -171,20 +171,39 @@ export function isSameDayEligible(dateStr: string, opts: { now?: Date } = {}): b
 export const STANDARD_FLEXIBLE_DELIVERY_GAP_HOURS = 22;
 
 /**
- * Parses a stored "HH:MM" or Postgres "HH:MM:SS" value into minutes since
- * midnight — or null if it isn't a genuine two-digit-hour/two-digit-minute
- * value in range (hours 00-23, minutes 00-59). Deliberately returns null
- * rather than clamping or otherwise guessing at a malformed value's intent
- * (e.g. "25:00" is rejected outright, never silently read as "01:00" the
- * next day) — callers treat null as "no valid schedule can be computed,"
- * never as a normalized time.
+ * The single strict parser for a stored booking time value. Accepts
+ * exactly "HH:MM" or Postgres/PostgREST's "HH:MM:SS" — two-digit hour
+ * (00-23), two-digit minute (00-59), and an optional two-digit second
+ * (00-59) — normalized to "HH:MM" for comparison against a generated
+ * window value. Anchored at both ends (^...$), so a trailing-garbage or
+ * partial match like "18:00garbage" or "18:00:99" is rejected outright,
+ * never silently accepted via its valid-looking prefix. Returns null for
+ * anything else — never clamps or otherwise guesses at a malformed value's
+ * intent (e.g. "25:00" is rejected, never silently read as "01:00" the
+ * next day). The single source of truth anywhere a generated "HH:MM"
+ * window value needs comparing against a stored database time, which
+ * PostgREST may return with or without seconds.
  */
-function valueToMinutes(value: string): number | null {
-  const match = /^(\d{2}):(\d{2})/.exec(value);
+export function normalizeStoredTime(value: string): string | null {
+  const match = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value);
   if (!match) return null;
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
-  if (hours > 23 || minutes > 59) return null;
+  const seconds = match[3] === undefined ? 0 : Number(match[3]);
+  if (hours > 23 || minutes > 59 || seconds > 59) return null;
+  return `${match[1]}:${match[2]}`;
+}
+
+/**
+ * Parses a stored "HH:MM" or "HH:MM:SS" value into minutes since midnight
+ * via normalizeStoredTime() — null for anything malformed, same as that
+ * function. Callers treat null as "no valid schedule can be computed,"
+ * never as a normalized time.
+ */
+function valueToMinutes(value: string): number | null {
+  const normalized = normalizeStoredTime(value);
+  if (!normalized) return null;
+  const [hours, minutes] = normalized.split(":").map(Number);
   return hours * 60 + minutes;
 }
 
