@@ -36,6 +36,13 @@ export const booking = {
       "Same-Day Rush isn't available for today's pickup anymore — the latest eligible window has passed. Choose a different pickup date, or Standard/Flexible speed.",
   },
 
+  // Shown for Standard/Flexible only — Same-Day has its own fixed evening
+  // delivery (see sameDay.disclosure above) and is exempt from this gap.
+  deliveryGap: {
+    notice:
+      "Delivery windows open at least 22 hours after your pickup window ends — a scheduling buffer, not an exact processing-time guarantee.",
+  },
+
   consent: {
     checkboxLabel:
       "By checking this box, you agree to receive non-marketing text messages from Mars Laundromat about this booking, including confirmation, scheduling, quote, payment, and delivery updates. Message frequency varies. Message and data rates may apply. Reply STOP to opt out. If you opt out while an order is active, we may call you about it.",
@@ -43,7 +50,8 @@ export const booking = {
   },
 
   dryCleaning: {
-    deliveryNotice: "Typically ready for delivery 3–4 calendar days after pickup.",
+    deliveryNotice:
+      "Choose a delivery window for the fourth calendar day after pickup. Your order may be ready on the third day; if it is, we'll text you to arrange an earlier delivery.",
     // Shown when Dry Cleaning is the only service selected.
     onlyItems: [
       `${dollars(DRY_CLEANING_MINIMUM_CENTS)} minimum for Dry Cleaning-only orders`,

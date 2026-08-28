@@ -159,3 +159,61 @@ export function isSameDayEligible(dateStr: string, opts: { now?: Date } = {}): b
   if (dateStr < getBrooklynToday(now)) return false;
   return getSameDayEligibleWindows(dateStr, opts).length > 0;
 }
+
+/**
+ * How long a Standard/Flexible delivery must wait after pickup — 22 full
+ * hours after the PICKUP WINDOW ENDS, not 22 hours after its stored start.
+ * A stored time is a window's start, so the window's own hour is added
+ * first (see WINDOW_DURATION_MINUTES). Same-Day Rush is an explicit,
+ * separate exception and never uses this rule — see
+ * SAME_DAY_DELIVERY_WINDOW_START instead.
+ */
+export const STANDARD_FLEXIBLE_DELIVERY_GAP_HOURS = 22;
+
+function valueToMinutes(value: string): number {
+  const [hours, minutes] = value.slice(0, 5).split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+/**
+ * The earliest a Standard/Flexible delivery window may start, as an
+ * absolute (date, minutes-since-midnight) pair — the pickup window's end
+ * (start + 1 hour) plus the 22-hour gap, normalized across the day
+ * boundary that sum almost always crosses.
+ */
+export function earliestStandardFlexibleDelivery(
+  pickupDate: string,
+  pickupTime: string
+): { date: string; minutes: number } {
+  const thresholdMinutes =
+    valueToMinutes(pickupTime) + WINDOW_DURATION_MINUTES + STANDARD_FLEXIBLE_DELIVERY_GAP_HOURS * 60;
+  const daysPast = Math.floor(thresholdMinutes / (24 * 60));
+  return {
+    date: daysPast === 0 ? pickupDate : addDays(pickupDate, daysPast),
+    minutes: thresholdMinutes - daysPast * 24 * 60,
+  };
+}
+
+/**
+ * The valid Standard/Flexible delivery windows for a given delivery date,
+ * given the pickup date/time they follow — the fixed daily window set,
+ * filtered down to whichever windows satisfy the 22-hour-after-pickup-end
+ * gap. Once deliveryDate is strictly after the threshold date every window
+ * qualifies (this is why Flexible's pickup+2 option always satisfies the
+ * gap on its own — the threshold always lands on pickup+1); none qualify
+ * before the threshold date. Single source of truth for the public form's
+ * option filtering, its Zod validation, and anywhere else a Standard/
+ * Flexible delivery window needs checking against its pickup.
+ */
+export function getStandardFlexibleDeliveryWindows(
+  pickupDate: string,
+  pickupTime: string,
+  deliveryDate: string,
+  opts: { now?: Date; excludePast?: boolean } = {}
+): TimeSlot[] {
+  const threshold = earliestStandardFlexibleDelivery(pickupDate, pickupTime);
+  if (deliveryDate < threshold.date) return [];
+  const windows = getWindowsForDate(deliveryDate, opts);
+  if (deliveryDate > threshold.date) return windows;
+  return windows.filter((w) => valueToMinutes(w.value) >= threshold.minutes);
+}

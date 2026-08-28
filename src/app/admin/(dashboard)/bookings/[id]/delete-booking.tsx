@@ -57,7 +57,23 @@ export function DeleteBooking({
       </Button>
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent>
+        {/*
+          The default AlertDialogContent tops out at sm:max-w-sm (384px),
+          which is too narrow for this dialog's long bilingual title,
+          description, and two-button footer — "Yes, delete permanently
+          是，永久删除" alone was overflowing the dialog's right edge at
+          desktop widths. Widened here only (data-[size=default]:sm:max-w-lg
+          matches the base class's own modifier chain so tailwind-merge
+          actually replaces it rather than leaving both in the class list);
+          every other confirmation dialog in the app keeps the shared
+          default. The buttons also get !whitespace-normal so long bilingual
+          labels can wrap onto a second line instead of forcing overflow if
+          the viewport is ever narrower than expected — Button's shared base
+          classes set whitespace-nowrap, and since AlertDialogAction/Cancel
+          forward className through a Radix Slot (plain concatenation, not
+          tailwind-merge), only an !important override is guaranteed to win.
+        */}
+        <AlertDialogContent className="data-[size=default]:sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>
               Permanently delete {customerName}&apos;s booking? 永久删除{customerName}的预约？
@@ -67,9 +83,16 @@ export function DeleteBooking({
               not archived, not recoverable. 此操作无法撤销，该预约的报价和备注将被彻底删除，无法恢复，也不会归档保留。
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Never mind 不要</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" disabled={isPending} onClick={handleDelete}>
+          <AlertDialogFooter className="gap-3">
+            <AlertDialogCancel className="!whitespace-normal" disabled={isPending}>
+              Never mind 不要
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              className="!whitespace-normal"
+              disabled={isPending}
+              onClick={handleDelete}
+            >
               Yes, delete permanently 是，永久删除
             </AlertDialogAction>
           </AlertDialogFooter>

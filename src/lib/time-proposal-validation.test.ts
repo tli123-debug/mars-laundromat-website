@@ -8,6 +8,7 @@ import {
   isDeliveryNotBeforePickup,
   isPreLifecycle,
   isValidStoreWindow,
+  validatePreferredTimeForServiceType,
   validateProposedTime,
 } from "./time-proposal-validation";
 
@@ -165,6 +166,122 @@ describe("validateProposedTime", () => {
       confirmedDeliveryTime: earlyWindow.value,
     });
     expect(result).toMatch(/before/i);
+  });
+});
+
+describe("validatePreferredTimeForServiceType", () => {
+  const FAR_FUTURE_PICKUP = "2026-12-01"; // pickup+1..+4 all safely away from "already started" filtering
+
+  describe("Wash & Fold Standard/Flexible", () => {
+    it("accepts a Standard request that clears the 22-hour gap", () => {
+      const result = validatePreferredTimeForServiceType("wash_and_fold", "standard", {
+        pickupDate: FAR_FUTURE_PICKUP,
+        pickupTime: "09:00",
+        deliveryDate: "2026-12-02",
+        deliveryTime: "09:00",
+      });
+      expect(result).toBeNull();
+    });
+
+    it("rejects a legacy request that predates the 22-hour gap rule", () => {
+      const result = validatePreferredTimeForServiceType("wash_and_fold", "standard", {
+        pickupDate: FAR_FUTURE_PICKUP,
+        pickupTime: "18:00",
+        deliveryDate: "2026-12-02",
+        deliveryTime: "16:00", // only 21 hours after the pickup window ends
+      });
+      expect(result).toMatch(/gap after pickup/i);
+    });
+
+    it("rejects a Standard delivery date outside its valid range", () => {
+      const result = validatePreferredTimeForServiceType("wash_and_fold", "standard", {
+        pickupDate: FAR_FUTURE_PICKUP,
+        pickupTime: "09:00",
+        deliveryDate: "2026-12-03", // pickup+2 — only Flexible allows this
+        deliveryTime: "09:00",
+      });
+      expect(result).toMatch(/valid range/i);
+    });
+
+    it("accepts Flexible's pickup+2 option even for the latest pickup window", () => {
+      const result = validatePreferredTimeForServiceType("wash_and_fold", "flexible", {
+        pickupDate: FAR_FUTURE_PICKUP,
+        pickupTime: "18:00",
+        deliveryDate: "2026-12-03",
+        deliveryTime: "09:00",
+      });
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("Same-Day Rush", () => {
+    it("accepts an eligible pickup with the fixed evening delivery", () => {
+      const result = validatePreferredTimeForServiceType("wash_and_fold", "same_day", {
+        pickupDate: FAR_FUTURE_PICKUP,
+        pickupTime: "11:00",
+        deliveryDate: FAR_FUTURE_PICKUP,
+        deliveryTime: "18:00",
+      });
+      expect(result).toBeNull();
+    });
+
+    it("rejects a pickup time that's no longer Same-Day eligible", () => {
+      const result = validatePreferredTimeForServiceType("wash_and_fold", "same_day", {
+        pickupDate: FAR_FUTURE_PICKUP,
+        pickupTime: "12:00",
+        deliveryDate: FAR_FUTURE_PICKUP,
+        deliveryTime: "18:00",
+      });
+      expect(result).toMatch(/Same-Day eligible/i);
+    });
+  });
+
+  describe("Dry Cleaning / Both", () => {
+    it("accepts the fourth-calendar-day request", () => {
+      const result = validatePreferredTimeForServiceType("dry_cleaning", "dry_cleaning_timeline", {
+        pickupDate: FAR_FUTURE_PICKUP,
+        pickupTime: "09:00",
+        deliveryDate: "2026-12-05", // pickup+4
+        deliveryTime: "09:00",
+      });
+      expect(result).toBeNull();
+    });
+
+    it("rejects a legacy pickup+3 request with a useful, specific error", () => {
+      const result = validatePreferredTimeForServiceType("dry_cleaning", "dry_cleaning_timeline", {
+        pickupDate: FAR_FUTURE_PICKUP,
+        pickupTime: "09:00",
+        deliveryDate: "2026-12-04", // pickup+3
+        deliveryTime: "09:00",
+      });
+      expect(result).toMatch(/fourth calendar day/i);
+    });
+
+    it("Both follows the exact same rule as Dry Cleaning-only", () => {
+      const result = validatePreferredTimeForServiceType("both", "dry_cleaning_timeline", {
+        pickupDate: FAR_FUTURE_PICKUP,
+        pickupTime: "09:00",
+        deliveryDate: "2026-12-04",
+        deliveryTime: "09:00",
+      });
+      expect(result).toMatch(/fourth calendar day/i);
+    });
+  });
+
+  it("does not restrict the manual proposed-time editor — isValidStoreWindow allows a pickup+3 Dry Cleaning date staff confirm by hand", () => {
+    // validatePreferredTimeForServiceType is only used by approveRequestedTime;
+    // the manual editor calls isValidStoreWindow/isDeliveryNotBeforePickup
+    // directly and has no day-4-only restriction at all.
+    const plusThree = "2026-12-04";
+    expect(isValidStoreWindow(plusThree, "09:00")).toBe(true);
+    expect(
+      isDeliveryNotBeforePickup({
+        confirmedPickupDate: FAR_FUTURE_PICKUP,
+        confirmedPickupTime: "09:00",
+        confirmedDeliveryDate: plusThree,
+        confirmedDeliveryTime: "09:00",
+      })
+    ).toBe(true);
   });
 });
 

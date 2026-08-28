@@ -16,7 +16,7 @@ export const dryCleaning = {
       "We count and inspect your garments after pickup",
       "We confirm your quote before anything is sent to the cleaner",
       "Ironing is included where appropriate — never a separate charge",
-      "Typically ready for delivery 3–4 calendar days after pickup",
+      "Typically ready in 3–4 calendar days — online bookings schedule delivery on day 4, and we'll text you to arrange an earlier delivery if it's ready on day 3",
     ],
   },
 

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   addDays,
+  earliestStandardFlexibleDelivery,
   formatClockLabel,
   getBrooklynNowMinutes,
   getBrooklynToday,
   getSameDayEligibleWindows,
+  getStandardFlexibleDeliveryWindows,
   getWindowsForDate,
   isSameDayEligible,
   rangeLabel,
@@ -168,6 +170,60 @@ describe("getSameDayEligibleWindows / isSameDayEligible — the noon rule", () =
     const now = new Date("2026-08-24T14:00:00Z");
     const yesterday = addDays(getBrooklynToday(now), -1);
     expect(isSameDayEligible(yesterday, { now })).toBe(false);
+  });
+});
+
+describe("earliestStandardFlexibleDelivery / getStandardFlexibleDeliveryWindows — the 22-hour gap", () => {
+  const PICKUP_DATE = "2026-09-02"; // Wed
+  const NEXT_DAY = "2026-09-03"; // Thu
+  const PLUS_TWO = "2026-09-04"; // Fri
+
+  it("a 6:00-7:00 PM pickup pushes the threshold to 5:00 PM the next day, not 4:00 PM", () => {
+    const threshold = earliestStandardFlexibleDelivery(PICKUP_DATE, "18:00");
+    expect(threshold).toEqual({ date: NEXT_DAY, minutes: 17 * 60 });
+  });
+
+  it("rejects 4:00-5:00 PM the next day after a 6:00-7:00 PM pickup", () => {
+    const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "18:00", NEXT_DAY);
+    expect(windows.map((w) => w.value)).not.toContain("16:00");
+  });
+
+  it("accepts 5:00-6:00 PM the next day after a 6:00-7:00 PM pickup — the earliest valid delivery", () => {
+    const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "18:00", NEXT_DAY);
+    expect(windows[0]?.value).toBe("17:00");
+    expect(windows.map((w) => w.value)).toContain("17:00");
+  });
+
+  it("accepts 4:00-5:00 PM the next day after a 5:00-6:00 PM pickup", () => {
+    const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "17:00", NEXT_DAY);
+    expect(windows[0]?.value).toBe("16:00");
+  });
+
+  it("a morning pickup's mathematical threshold falls before business hours, so the first available window is still 9:00 AM", () => {
+    const threshold = earliestStandardFlexibleDelivery(PICKUP_DATE, "09:00");
+    expect(threshold).toEqual({ date: NEXT_DAY, minutes: 8 * 60 }); // 8:00 AM — not itself a bookable window
+    const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "09:00", NEXT_DAY);
+    expect(windows[0]?.value).toBe("09:00");
+    expect(windows).toHaveLength(10); // every fixed window that day qualifies
+  });
+
+  it("pickup+2 always satisfies the gap on its own, for any pickup window in the business day", () => {
+    for (const pickupTime of ["09:00", "12:00", "18:00"]) {
+      const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, pickupTime, PLUS_TWO);
+      expect(windows).toHaveLength(10);
+    }
+  });
+
+  it("rejects every window on a delivery date entirely before the threshold date", () => {
+    // A 6:00-7:00 PM pickup's threshold lands on the next day — the pickup
+    // date itself (a same-day delivery) can never satisfy a 22-hour gap.
+    const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "18:00", PICKUP_DATE);
+    expect(windows).toHaveLength(0);
+  });
+
+  it("handles Postgres's HH:MM:SS stored format for the pickup time", () => {
+    const threshold = earliestStandardFlexibleDelivery(PICKUP_DATE, "18:00:00");
+    expect(threshold).toEqual({ date: NEXT_DAY, minutes: 17 * 60 });
   });
 });
 

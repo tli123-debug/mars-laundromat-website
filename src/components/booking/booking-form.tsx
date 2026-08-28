@@ -27,18 +27,21 @@ import {
   addDays,
   getBrooklynToday,
   getSameDayEligibleWindows,
+  getStandardFlexibleDeliveryWindows,
   getWindowsForDate,
   isSameDayEligible,
   SAME_DAY_DELIVERY_WINDOW_START,
 } from "@/lib/booking-hours";
-import { getDryCleaningDeliveryDateOptions } from "@/lib/dry-cleaning-schedule";
+import { getDryCleaningDeliveryDate } from "@/lib/dry-cleaning-schedule";
+import { SAME_DAY_FEE_CENTS } from "@/lib/pricing/calculate-quote";
+import { formatDollars } from "@/lib/format-currency";
 import { booking as bookingContent } from "@/content/booking";
 import { createBooking } from "@/app/(site)/book/actions";
 
 const SERVICE_SPEED_OPTIONS: { value: ServiceSpeed; label: string }[] = [
   { value: "standard", label: "Standard Next-Day" },
   { value: "flexible", label: "Flexible 24–48 Hours" },
-  { value: "same_day", label: "Same-Day Rush (+$10, subject to approval)" },
+  { value: "same_day", label: `Same-Day Rush (+${formatDollars(SAME_DAY_FEE_CENTS)}, subject to approval)` },
 ];
 
 function formatDateDisplay(dateStr: string): string {
@@ -71,6 +74,7 @@ export function BookingForm() {
 
   const today = getBrooklynToday();
   const pickupDate = watch("preferredPickupDate");
+  const pickupTime = watch("preferredPickupTime");
   const deliveryDate = watch("preferredDeliveryDate");
   const serviceSpeed = watch("serviceSpeed");
   const washAndFold = watch("washAndFold");
@@ -82,7 +86,19 @@ export function BookingForm() {
       ? getSameDayEligibleWindows(pickupDate)
       : getWindowsForDate(pickupDate)
     : [];
-  const deliveryWindowOptions = deliveryDate ? getWindowsForDate(deliveryDate) : [];
+  // Standard/Flexible delivery windows depend on the pickup TIME too (the
+  // 22-hour gap), not just the delivery date — so until a pickup time is
+  // chosen, there's nothing valid to offer yet, matching "leave the
+  // delivery-window selector empty until pickup date/time are set."
+  // Dry Cleaning/Both has no such gap on its fixed day-4 date; Same-Day
+  // shows its own fixed 6:00-7:00 PM display below instead of this Select.
+  const deliveryWindowOptions = !deliveryDate
+    ? []
+    : dryCleaning
+      ? getWindowsForDate(deliveryDate)
+      : pickupTime
+        ? getStandardFlexibleDeliveryWindows(pickupDate, pickupTime, deliveryDate)
+        : [];
   const sameDayEligible = pickupDate ? isSameDayEligible(pickupDate) : false;
 
   /**
@@ -125,9 +141,18 @@ export function BookingForm() {
         : nextDay;
 
     setValue("preferredDeliveryDate", newDeliveryDate);
-    const validDeliveryTimes = new Set(
-      getWindowsForDate(newDeliveryDate).map((w) => w.value)
-    );
+    // A pickup time might not be chosen yet (speed can be picked before or
+    // after the pickup window) — getStandardFlexibleDeliveryWindows needs a
+    // real time to compute the 22-hour gap, so treat "no pickup time yet"
+    // as "no valid delivery time yet" rather than calling it with one.
+    const currentPickupTime = getValues("preferredPickupTime");
+    const validDeliveryTimes = currentPickupTime
+      ? new Set(
+          getStandardFlexibleDeliveryWindows(pickupDateValue, currentPickupTime, newDeliveryDate).map(
+            (w) => w.value
+          )
+        )
+      : new Set<string>();
     const currentDeliveryTime = getValues("preferredDeliveryTime");
     if (currentDeliveryTime && !validDeliveryTimes.has(currentDeliveryTime)) {
       setValue("preferredDeliveryTime", "");
@@ -141,22 +166,15 @@ export function BookingForm() {
 
   /**
    * Dry Cleaning/Both's equivalent of applySpeedDerivedFields() above — the
-   * delivery date is a fixed pickup+3/+4 pair instead of a speed-derived
-   * window. Mirrors that function's shape exactly: the delivery date is
-   * always recomputed (preserved across the change only if it's still one
-   * of the two valid options), and the delivery time is cleared only if it's
-   * no longer valid for the resulting date.
+   * delivery date is always exactly the fixed fourth calendar day after
+   * pickup now (no customer choice of date, unlike Wash & Fold's
+   * speed-derived window), so it's unconditionally recomputed rather than
+   * preserved across a pickup-date change.
    */
   function applyDryCleaningDerivedFields(pickupDateValue: string) {
     if (!pickupDateValue) return;
 
-    const [plusThree, plusFour] = getDryCleaningDeliveryDateOptions(pickupDateValue);
-    const currentDeliveryDate = getValues("preferredDeliveryDate");
-    const newDeliveryDate =
-      currentDeliveryDate === plusThree || currentDeliveryDate === plusFour
-        ? currentDeliveryDate
-        : plusThree;
-
+    const newDeliveryDate = getDryCleaningDeliveryDate(pickupDateValue);
     setValue("preferredDeliveryDate", newDeliveryDate);
     const validDeliveryTimes = new Set(getWindowsForDate(newDeliveryDate).map((w) => w.value));
     const currentDeliveryTime = getValues("preferredDeliveryTime");
@@ -182,6 +200,31 @@ export function BookingForm() {
     } else {
       const speed = getValues("serviceSpeed");
       if (speed) applySpeedDerivedFields(speed, newPickupDate);
+    }
+  }
+
+  /**
+   * The pickup DATE isn't the only thing the 22-hour gap depends on — the
+   * pickup TIME matters too (a 6:00 PM pickup needs a later delivery window
+   * than a 9:00 AM one on the same date), so a delivery time that was valid
+   * before the pickup time changed can become invalid without the pickup
+   * date or delivery date ever changing. Same-Day and Dry Cleaning/Both
+   * don't use this gap at all — same-day's own pickup-window list is
+   * already pre-filtered to always-valid choices, and dry cleaning's fixed
+   * day-4 date has no gap dependency on pickup time.
+   */
+  function revalidateDeliveryAfterPickupTimeChange(newPickupTime: string) {
+    if (dryCleaning || serviceSpeed === "same_day" || !newPickupTime || !pickupDate) return;
+    const deliveryDateValue = getValues("preferredDeliveryDate");
+    if (!deliveryDateValue) return;
+
+    const validDeliveryTimes = new Set(
+      getStandardFlexibleDeliveryWindows(pickupDate, newPickupTime, deliveryDateValue).map((w) => w.value)
+    );
+    const currentDeliveryTime = getValues("preferredDeliveryTime");
+    if (currentDeliveryTime && !validDeliveryTimes.has(currentDeliveryTime)) {
+      setValue("preferredDeliveryTime", "");
+      setSelectResetKey((key) => key + 1);
     }
   }
 
@@ -442,7 +485,10 @@ export function BookingForm() {
               <Select
                 key={selectResetKey}
                 value={field.value}
-                onValueChange={field.onChange}
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  revalidateDeliveryAfterPickupTimeChange(value);
+                }}
                 disabled={!pickupDate}
               >
                 <SelectTrigger id="preferredPickupTime" className="w-full">
@@ -470,37 +516,11 @@ export function BookingForm() {
         <div className="grid gap-2">
           <Label htmlFor="preferredDeliveryDate">Delivery date</Label>
           {dryCleaning ? (
-            <Controller
-              control={control}
-              name="preferredDeliveryDate"
-              render={({ field }) => (
-                <Select
-                  key={selectResetKey}
-                  value={field.value}
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    const validTimes = new Set(getWindowsForDate(value).map((w) => w.value));
-                    const currentTime = getValues("preferredDeliveryTime");
-                    if (currentTime && !validTimes.has(currentTime)) {
-                      setValue("preferredDeliveryTime", "");
-                    }
-                  }}
-                  disabled={!pickupDate}
-                >
-                  <SelectTrigger id="preferredDeliveryDate" className="w-full">
-                    <SelectValue placeholder="Choose a delivery date" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pickupDate &&
-                      getDryCleaningDeliveryDateOptions(pickupDate).map((date, index) => (
-                        <SelectItem key={date} value={date}>
-                          {formatDateDisplay(date)} ({index === 0 ? "3 days later" : "4 days later"})
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
+            <p className="flex h-9 items-center text-sm text-muted-foreground">
+              {deliveryDate
+                ? `${formatDateDisplay(deliveryDate)} — 4 days after pickup`
+                : "Choose a pickup date first"}
+            </p>
           ) : serviceSpeed === "flexible" ? (
             <Controller
               control={control}
@@ -511,9 +531,18 @@ export function BookingForm() {
                   value={field.value}
                   onValueChange={(value) => {
                     field.onChange(value);
-                    const validTimes = new Set(
-                      getWindowsForDate(value).map((w) => w.value)
-                    );
+                    // Gap-aware, not a raw getWindowsForDate() lookup — a
+                    // time only valid because pickup+2 always clears the
+                    // gap can become invalid the moment the customer picks
+                    // pickup+1 back instead.
+                    const currentPickupTime = getValues("preferredPickupTime");
+                    const validTimes = currentPickupTime
+                      ? new Set(
+                          getStandardFlexibleDeliveryWindows(pickupDate, currentPickupTime, value).map(
+                            (w) => w.value
+                          )
+                        )
+                      : new Set<string>();
                     const currentTime = getValues("preferredDeliveryTime");
                     if (currentTime && !validTimes.has(currentTime)) {
                       setValue("preferredDeliveryTime", "");
@@ -554,6 +583,9 @@ export function BookingForm() {
           {dryCleaning && (
             <p className="text-sm text-muted-foreground">{bookingContent.dryCleaning.deliveryNotice}</p>
           )}
+          {washAndFoldOnly && serviceSpeed !== "same_day" && (
+            <p className="text-sm text-muted-foreground">{bookingContent.deliveryGap.notice}</p>
+          )}
         </div>
         <div className="grid gap-2">
           <Label htmlFor="preferredDeliveryTime">Delivery window</Label>
@@ -568,11 +600,17 @@ export function BookingForm() {
                   key={selectResetKey}
                   value={field.value}
                   onValueChange={field.onChange}
-                  disabled={!deliveryDate}
+                  disabled={deliveryWindowOptions.length === 0}
                 >
                   <SelectTrigger id="preferredDeliveryTime" className="w-full">
                     <SelectValue
-                      placeholder={deliveryDate ? "Choose a window" : "Choose a date first"}
+                      placeholder={
+                        !deliveryDate
+                          ? "Choose a date first"
+                          : deliveryWindowOptions.length === 0
+                            ? "Choose a pickup time first"
+                            : "Choose a window"
+                      }
                     />
                   </SelectTrigger>
                   <SelectContent>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { bookingSchema, fieldsToResetOnServiceChange, windowLabel } from "./booking-schema";
 import { addDays, getBrooklynToday, getWindowsForDate } from "@/lib/booking-hours";
-import { getDryCleaningDeliveryDateOptions } from "@/lib/dry-cleaning-schedule";
+import { getDryCleaningDeliveryDate } from "@/lib/dry-cleaning-schedule";
 
 // Anchored 10 days out so "already started today" filtering never applies —
 // these tests exercise the rule logic (delivery-date-matches-speed,
@@ -37,14 +37,14 @@ function baseInput(overrides: Record<string, unknown> = {}) {
 // Dry Cleaning-only and Both share the exact same scheduling rule, so both
 // helpers build on baseInput and only differ in washAndFold.
 function dryCleaningInput(overrides: Record<string, unknown> = {}) {
-  const [plusThree] = getDryCleaningDeliveryDateOptions(FUTURE_PICKUP_DATE);
+  const deliveryDate = getDryCleaningDeliveryDate(FUTURE_PICKUP_DATE);
   return baseInput({
     washAndFold: false,
     dryCleaning: true,
     dryCleaningBagAcknowledgement: true,
     serviceSpeed: undefined,
-    preferredDeliveryDate: plusThree,
-    preferredDeliveryTime: getWindowsForDate(plusThree)[0].value,
+    preferredDeliveryDate: deliveryDate,
+    preferredDeliveryTime: getWindowsForDate(deliveryDate)[0].value,
     ...overrides,
   });
 }
@@ -152,6 +152,67 @@ describe("bookingSchema — flexible speed", () => {
   });
 });
 
+describe("bookingSchema — the 22-hour delivery gap (Standard/Flexible)", () => {
+  it("rejects a next-day delivery window that's within range but doesn't clear the 22-hour gap", () => {
+    // 6:00-7:00 PM pickup -> next-day 4:00-5:00 PM is only 21 hours after
+    // the pickup window ends, one hour short of the required 22.
+    const result = bookingSchema.safeParse(
+      baseInput({
+        preferredPickupTime: "18:00",
+        preferredDeliveryDate: addDays(FUTURE_PICKUP_DATE, 1),
+        preferredDeliveryTime: "16:00",
+      })
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts the earliest delivery window that does clear the gap for that same late pickup", () => {
+    const result = bookingSchema.safeParse(
+      baseInput({
+        preferredPickupTime: "18:00",
+        preferredDeliveryDate: addDays(FUTURE_PICKUP_DATE, 1),
+        preferredDeliveryTime: "17:00",
+      })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("applies to Flexible's pickup+1 option too, not just Standard", () => {
+    const result = bookingSchema.safeParse(
+      baseInput({
+        serviceSpeed: "flexible",
+        preferredPickupTime: "18:00",
+        preferredDeliveryDate: addDays(FUTURE_PICKUP_DATE, 1),
+        preferredDeliveryTime: "16:00",
+      })
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it("never blocks Flexible's pickup+2 option, even for the latest possible pickup window", () => {
+    const result = bookingSchema.safeParse(
+      baseInput({
+        serviceSpeed: "flexible",
+        preferredPickupTime: "18:00",
+        preferredDeliveryDate: addDays(FUTURE_PICKUP_DATE, 2),
+        preferredDeliveryTime: "09:00",
+      })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a hand-crafted delivery time that was never a real window at all", () => {
+    const result = bookingSchema.safeParse(
+      baseInput({
+        preferredPickupTime: "18:00",
+        preferredDeliveryDate: addDays(FUTURE_PICKUP_DATE, 1),
+        preferredDeliveryTime: "16:37",
+      })
+    );
+    expect(result.success).toBe(false);
+  });
+});
+
 describe("bookingSchema — same-day speed", () => {
   function sameDayInput(pickupTimeValue: string, overrides: Record<string, unknown> = {}) {
     return baseInput({
@@ -206,19 +267,8 @@ describe("bookingSchema — at least one service is required", () => {
 });
 
 describe("bookingSchema — Dry Cleaning-only scheduling", () => {
-  it("accepts pickup+3 delivery", () => {
-    const [plusThree] = getDryCleaningDeliveryDateOptions(FUTURE_PICKUP_DATE);
-    const result = bookingSchema.safeParse(
-      dryCleaningInput({
-        preferredDeliveryDate: plusThree,
-        preferredDeliveryTime: getWindowsForDate(plusThree)[0].value,
-      })
-    );
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts pickup+4 delivery", () => {
-    const [, plusFour] = getDryCleaningDeliveryDateOptions(FUTURE_PICKUP_DATE);
+  it("accepts pickup+4 delivery — the only customer-selectable date", () => {
+    const plusFour = getDryCleaningDeliveryDate(FUTURE_PICKUP_DATE);
     const result = bookingSchema.safeParse(
       dryCleaningInput({
         preferredDeliveryDate: plusFour,
@@ -226,6 +276,17 @@ describe("bookingSchema — Dry Cleaning-only scheduling", () => {
       })
     );
     expect(result.success).toBe(true);
+  });
+
+  it("rejects pickup+3 delivery — no longer offered to the public form", () => {
+    const plusThree = addDays(FUTURE_PICKUP_DATE, 3);
+    const result = bookingSchema.safeParse(
+      dryCleaningInput({
+        preferredDeliveryDate: plusThree,
+        preferredDeliveryTime: getWindowsForDate(plusThree)[0].value,
+      })
+    );
+    expect(result.success).toBe(false);
   });
 
   it("rejects delivery one day after pickup (too early)", () => {
@@ -265,20 +326,9 @@ describe("bookingSchema — Dry Cleaning-only scheduling", () => {
   });
 });
 
-describe("bookingSchema — Both scheduling follows the same 3-4 day rule", () => {
-  it("accepts pickup+3 delivery", () => {
-    const [plusThree] = getDryCleaningDeliveryDateOptions(FUTURE_PICKUP_DATE);
-    const result = bookingSchema.safeParse(
-      bothInput({
-        preferredDeliveryDate: plusThree,
-        preferredDeliveryTime: getWindowsForDate(plusThree)[0].value,
-      })
-    );
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts pickup+4 delivery", () => {
-    const [, plusFour] = getDryCleaningDeliveryDateOptions(FUTURE_PICKUP_DATE);
+describe("bookingSchema — Both scheduling follows the same day-4 rule", () => {
+  it("accepts pickup+4 delivery — the only customer-selectable date", () => {
+    const plusFour = getDryCleaningDeliveryDate(FUTURE_PICKUP_DATE);
     const result = bookingSchema.safeParse(
       bothInput({
         preferredDeliveryDate: plusFour,
@@ -286,6 +336,17 @@ describe("bookingSchema — Both scheduling follows the same 3-4 day rule", () =
       })
     );
     expect(result.success).toBe(true);
+  });
+
+  it("rejects pickup+3 delivery — no longer offered to the public form", () => {
+    const plusThree = addDays(FUTURE_PICKUP_DATE, 3);
+    const result = bookingSchema.safeParse(
+      bothInput({
+        preferredDeliveryDate: plusThree,
+        preferredDeliveryTime: getWindowsForDate(plusThree)[0].value,
+      })
+    );
+    expect(result.success).toBe(false);
   });
 
   it("rejects delivery two days after pickup (too early)", () => {

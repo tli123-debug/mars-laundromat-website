@@ -107,13 +107,13 @@ describe("calculateQuote — same-day fee", () => {
     expect(result.sameDayFeeCents).toBe(0);
   });
 
-  it("adds a flat $10 fee when approved, independent of weight", () => {
+  it("adds a flat $8 fee when approved, independent of weight", () => {
     const light = calculateQuote({ actualWeightLb: 20, sameDayApproved: true });
     const heavy = calculateQuote({ actualWeightLb: 25, sameDayApproved: true });
-    expect(light.sameDayFeeCents).toBe(1000);
-    expect(heavy.sameDayFeeCents).toBe(1000);
-    expect(light.totalCents).toBe(3000 + 1000);
-    expect(heavy.totalCents).toBe(3750 + 1000);
+    expect(light.sameDayFeeCents).toBe(800);
+    expect(heavy.sameDayFeeCents).toBe(800);
+    expect(light.totalCents).toBe(3000 + 800);
+    expect(heavy.totalCents).toBe(3750 + 800);
   });
 });
 
@@ -183,14 +183,21 @@ describe("calculateQuote — combined charges", () => {
     });
     expect(result.billableWeightLb).toBe(25);
     expect(result.laundryChargeCents).toBe(3750);
-    expect(result.sameDayFeeCents).toBe(1000);
+    expect(result.sameDayFeeCents).toBe(800);
     expect(result.surchargeTotalCents).toBe(750);
     // totalCents must always equal the sum of its three components — this is
     // the same formula the DB's generated quote_total_cents column uses.
     expect(result.totalCents).toBe(
       result.laundryChargeCents + result.sameDayFeeCents + result.surchargeTotalCents
     );
-    expect(result.totalCents).toBe(5500);
+    expect(result.totalCents).toBe(5300);
+  });
+
+  it("a 20 lb minimum-order Same-Day quote totals $38 before any other surcharges", () => {
+    const result = calculateQuote({ actualWeightLb: 20, sameDayApproved: true });
+    expect(result.laundryChargeCents).toBe(3000); // $30 minimum
+    expect(result.sameDayFeeCents).toBe(800); // $8
+    expect(result.totalCents).toBe(3800); // $38
   });
 });
 

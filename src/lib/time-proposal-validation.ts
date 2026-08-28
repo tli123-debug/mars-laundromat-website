@@ -1,5 +1,13 @@
-import { getWindowsForDate, WINDOW_DURATION_MINUTES } from "@/lib/booking-hours";
-import type { BookingStatus } from "@/types/database.types";
+import {
+  getSameDayEligibleWindows,
+  getStandardFlexibleDeliveryWindows,
+  getWindowsForDate,
+  SAME_DAY_DELIVERY_WINDOW_START,
+  WINDOW_DURATION_MINUTES,
+  addDays,
+} from "@/lib/booking-hours";
+import { isValidDryCleaningDeliveryDate } from "@/lib/dry-cleaning-schedule";
+import type { BookingStatus, ServiceSpeed, ServiceType } from "@/types/database.types";
 
 function timeValueToMinutes(time: string): number {
   const [hours, minutes] = time.split(":").map(Number);
@@ -50,6 +58,79 @@ export function validateProposedTime(input: ProposedTimeInput): string | null {
   }
   if (!isDeliveryNotBeforePickup(input)) {
     return "Delivery time can't be before the pickup time.";
+  }
+  return null;
+}
+
+export interface PreferredTimeInput {
+  pickupDate: string;
+  pickupTime: string;
+  deliveryDate: string;
+  deliveryTime: string;
+}
+
+/**
+ * Whether a booking's STORED customer request (preferred_*) still
+ * satisfies its service-specific public-form rule, re-derived from
+ * service_type/service_speed fetched fresh — exactly the rules
+ * bookingSchema's superRefine enforces on a live submission
+ * (validations/booking-schema.ts), applied again here because a request
+ * saved before a scheduling rule changed (e.g. a legacy pickup+3 Dry
+ * Cleaning request, or a pre-22-hour-gap Standard request) can't be
+ * blindly trusted just because it passed validation once, long ago.
+ *
+ * Used only by approveRequestedTime(), which otherwise just copies
+ * preferred_* into confirmed_* verbatim. The manual proposed-time editor
+ * below is deliberately NOT built on this function — it keeps its own
+ * broader staff discretion (isValidStoreWindow + isDeliveryNotBeforePickup,
+ * any date at or after pickup), so a legacy or exceptional request is
+ * still confirmable by hand even when this stricter check rejects it.
+ */
+export function validatePreferredTimeForServiceType(
+  serviceType: ServiceType,
+  serviceSpeed: ServiceSpeed,
+  input: PreferredTimeInput
+): string | null {
+  if (!isValidStoreWindow(input.pickupDate, input.pickupTime)) {
+    return "The requested pickup time isn't a valid store window.";
+  }
+
+  if (serviceType === "dry_cleaning" || serviceType === "both") {
+    if (!isValidDryCleaningDeliveryDate(input.pickupDate, input.deliveryDate)) {
+      return "The requested delivery date isn't the fourth calendar day after pickup.";
+    }
+    if (!isValidStoreWindow(input.deliveryDate, input.deliveryTime)) {
+      return "The requested delivery time isn't a valid store window.";
+    }
+    return null;
+  }
+
+  if (serviceSpeed === "same_day") {
+    const eligiblePickupTimes = new Set(
+      getSameDayEligibleWindows(input.pickupDate).map((w) => w.value)
+    );
+    if (!eligiblePickupTimes.has(input.pickupTime)) {
+      return "The requested pickup time is no longer Same-Day eligible.";
+    }
+    if (input.deliveryDate !== input.pickupDate || input.deliveryTime !== SAME_DAY_DELIVERY_WINDOW_START) {
+      return "The requested Same-Day delivery no longer matches the fixed 6:00–7:00 PM window.";
+    }
+    return null;
+  }
+
+  // Standard / Flexible.
+  const minDeliveryDate = addDays(input.pickupDate, 1);
+  const maxDeliveryDate = serviceSpeed === "flexible" ? addDays(input.pickupDate, 2) : minDeliveryDate;
+  if (input.deliveryDate < minDeliveryDate || input.deliveryDate > maxDeliveryDate) {
+    return "The requested delivery date is outside the valid range for this service speed.";
+  }
+  const validDeliveryTimes = new Set(
+    getStandardFlexibleDeliveryWindows(input.pickupDate, input.pickupTime, input.deliveryDate).map(
+      (w) => w.value
+    )
+  );
+  if (!validDeliveryTimes.has(input.deliveryTime)) {
+    return "The requested delivery time doesn't allow the required gap after pickup.";
   }
   return null;
 }

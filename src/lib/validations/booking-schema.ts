@@ -3,6 +3,7 @@ import {
   addDays,
   getBrooklynToday,
   getSameDayEligibleWindows,
+  getStandardFlexibleDeliveryWindows,
   getWindowsForDate,
   rangeLabel,
   SAME_DAY_DELIVERY_WINDOW_START,
@@ -112,19 +113,21 @@ export const bookingSchema = z
       });
     }
 
-    // Dry Cleaning and Both share the exact same fixed 3-4 calendar-day
-    // turnaround and never offer Same-Day Rush, regardless of whether Wash &
-    // Fold is also included — so this branches on dryCleaning alone. Any
-    // serviceSpeed value submitted alongside a dry-cleaning-involving
-    // booking (stale or adversarial) is ignored here on purpose: this rule
-    // decides delivery-date validity by the pickup+3/+4 window only, so a
-    // smuggled "same_day" can't shortcut same-day-style scheduling onto a
-    // dry-cleaning booking.
+    // Dry Cleaning and Both share the exact same fixed delivery rule and
+    // never offer Same-Day Rush, regardless of whether Wash & Fold is also
+    // included — so this branches on dryCleaning alone. Any serviceSpeed
+    // value submitted alongside a dry-cleaning-involving booking (stale or
+    // adversarial) is ignored here on purpose: this rule decides
+    // delivery-date validity by the pickup+4 date only, so a smuggled
+    // "same_day" can't shortcut same-day-style scheduling onto a
+    // dry-cleaning booking. Requesting pickup+3 is deliberately rejected
+    // here even though staff can still arrange it by hand later if the
+    // order turns out to be ready early — see isValidDryCleaningDeliveryDate().
     if (data.dryCleaning) {
       if (!isValidDryCleaningDeliveryDate(data.preferredPickupDate, data.preferredDeliveryDate)) {
         ctx.addIssue({
           code: "custom",
-          message: "Dry cleaning delivery is 3–4 calendar days after pickup",
+          message: "Dry cleaning delivery is scheduled for the fourth calendar day after pickup",
           path: ["preferredDeliveryDate"],
         });
       } else {
@@ -193,8 +196,16 @@ export const bookingSchema = z
         path: ["preferredDeliveryDate"],
       });
     } else {
+      // A delivery window must also clear the 22-hour-after-pickup-end gap
+      // (see getStandardFlexibleDeliveryWindows) — a pickup+1 date being
+      // within range doesn't mean every window on it actually satisfies
+      // the gap for a late-day pickup.
       const deliveryWindowValues = new Set(
-        getWindowsForDate(data.preferredDeliveryDate).map((w) => w.value)
+        getStandardFlexibleDeliveryWindows(
+          data.preferredPickupDate,
+          data.preferredPickupTime,
+          data.preferredDeliveryDate
+        ).map((w) => w.value)
       );
       if (!deliveryWindowValues.has(data.preferredDeliveryTime)) {
         ctx.addIssue({
@@ -237,7 +248,7 @@ export const bookingFormDefaults: BookingInput = {
  * setValue; this function only decides what's stale.
  *
  * Delivery date/time always reset: Wash & Fold's speed-based window and Dry
- * Cleaning/Both's fixed pickup+3/+4 window are never both valid for the same
+ * Cleaning/Both's fixed pickup+4 date are never both valid for the same
  * stored value. serviceSpeed resets to undefined when dry cleaning becomes
  * selected (it's hidden and unused), or back to "standard" when returning to
  * Wash & Fold-only (it becomes required again). The dry-cleaning-only fields

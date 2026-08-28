@@ -7,11 +7,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { calculateQuote } from "@/lib/pricing/calculate-quote";
+import { calculateQuote, SAME_DAY_FEE_CENTS } from "@/lib/pricing/calculate-quote";
 import { calculateDryCleaningEffectiveCharge, DRY_CLEANING_MINIMUM_CENTS } from "@/lib/pricing/dry-cleaning-charge";
 import { canApplySameDayFee, canMarkQuoteSentForServiceType, dollarsToCents } from "@/lib/quote-validation";
 import { serviceTypeIncludesDryCleaning, serviceTypeIncludesWashAndFold } from "@/lib/service-type";
 import { bookingQuoteTextHref } from "@/lib/booking-links";
+import { formatDollars } from "@/lib/format-currency";
 import type { Database } from "@/types/database.types";
 import { markQuoteSent, saveQuote } from "./actions";
 
@@ -165,7 +166,7 @@ export function QuoteEditor({ booking }: { booking: BookingRow }) {
               disabled={!isSameDay}
             />
             <Label htmlFor="same-day-approved">
-              Same-Day fee ($10) 加急费
+              Same-Day fee ({formatDollars(SAME_DAY_FEE_CENTS)}) 加急费
               {!isSameDay && <span className="text-muted-foreground">(not a Same-Day Rush booking)</span>}
             </Label>
           </div>

@@ -54,7 +54,7 @@ export const serviceQuoteEntrySchema = z.object({
 export type ServiceQuoteEntryInput = z.infer<typeof serviceQuoteEntrySchema>;
 
 /**
- * Service-type-aware replacement for canApplySameDayFee(). The $10 fee is
+ * Service-type-aware replacement for canApplySameDayFee(). The $8 fee is
  * only ever legal on a booking that is BOTH actually wash_and_fold AND
  * actually same_day — both checked against values fetched fresh from the
  * database, never trusted from client input. The original
@@ -104,7 +104,7 @@ export function validateQuoteEntryForServiceType(
     }
   }
   if (input.sameDayApproved && !canApplySameDayFeeForServiceType(serviceType, serviceSpeed, true)) {
-    return "This booking isn't Same-Day Rush — the $10 fee doesn't apply.";
+    return "This booking isn't Same-Day Rush — the $8 fee doesn't apply.";
   }
   return null;
 }

@@ -18,6 +18,7 @@ import {
   buildClearProposedTimePayload,
   buildSaveProposedTimePayload,
   hasCompleteProposedTime,
+  validatePreferredTimeForServiceType,
   validateProposedTime,
 } from "@/lib/time-proposal-validation";
 
@@ -36,7 +37,9 @@ export async function approveRequestedTime(bookingId: string) {
 
   const { data: booking, error: fetchError } = await supabase
     .from("bookings")
-    .select("status, preferred_pickup_date, preferred_pickup_time, preferred_delivery_date, preferred_delivery_time")
+    .select(
+      "status, service_type, service_speed, preferred_pickup_date, preferred_pickup_time, preferred_delivery_date, preferred_delivery_time"
+    )
     .eq("id", bookingId)
     .single();
 
@@ -46,6 +49,22 @@ export async function approveRequestedTime(bookingId: string) {
 
   if (!booking.preferred_delivery_date || !booking.preferred_delivery_time) {
     return { error: "This booking is missing delivery details." };
+  }
+
+  // The customer's request may have been saved before a scheduling rule
+  // changed (a legacy pickup+3 Dry Cleaning date, a pre-22-hour-gap
+  // Standard delivery, etc.) — re-validate it against the CURRENT rule for
+  // its actual service type/speed before ever copying it into confirmed_*.
+  const validationError = validatePreferredTimeForServiceType(booking.service_type, booking.service_speed, {
+    pickupDate: booking.preferred_pickup_date,
+    pickupTime: booking.preferred_pickup_time,
+    deliveryDate: booking.preferred_delivery_date,
+    deliveryTime: booking.preferred_delivery_time,
+  });
+  if (validationError) {
+    return {
+      error: `${validationError} Use the manual time editor below to confirm a valid time by hand.`,
+    };
   }
 
   const payload = buildApproveTimePayload(

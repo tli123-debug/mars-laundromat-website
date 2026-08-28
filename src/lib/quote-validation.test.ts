@@ -495,14 +495,14 @@ describe("buildServiceQuoteUpdatePayload", () => {
   });
 
   describe("never constructs an invalid Same-Day fee, regardless of what sameDayApproved claims", () => {
-    it("wash_and_fold + same_day + approved: the one legitimate case actually gets the $10 fee", () => {
+    it("wash_and_fold + same_day + approved: the one legitimate case actually gets the $8 fee", () => {
       const payload = buildServiceQuoteUpdatePayload(
         "wash_and_fold",
         "same_day",
         { actualWeightLb: 20, sameDayApproved: true },
         "user-123"
       );
-      expect(payload.same_day_fee_cents).toBe(1000);
+      expect(payload.same_day_fee_cents).toBe(800);
     });
 
     it("Standard wash_and_fold: sameDayApproved=true is ignored, fee stays 0", () => {

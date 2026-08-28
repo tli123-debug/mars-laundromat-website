@@ -14,7 +14,11 @@
 export const MINIMUM_BILLABLE_WEIGHT_LB = 20;
 export const PRICE_PER_POUND_CENTS = 150;
 export const MINIMUM_ORDER_CENTS = MINIMUM_BILLABLE_WEIGHT_LB * PRICE_PER_POUND_CENTS;
-export const SAME_DAY_FEE_CENTS = 1000;
+// $8 as of 2026-08-28 (was $10) — see
+// supabase/migrations/20260828000000_same_day_fee_reduction.sql, which
+// widened the DB constraint to accept both amounts so this constant could
+// change without invalidating bookings already quoted at the old fee.
+export const SAME_DAY_FEE_CENTS = 800;
 
 export interface SurchargeLineItem {
   description: string;
