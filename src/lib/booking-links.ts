@@ -1,6 +1,9 @@
 import { siteConfig } from "@/content/site-config";
 import { ZELLE_RECIPIENT_DETAIL } from "@/content/payment";
 import { formatDollars } from "@/lib/format-currency";
+import { SERVICE_TYPE_CUSTOMER_LABELS } from "@/lib/service-type";
+import { windowLabel } from "@/lib/validations/booking-schema";
+import type { ServiceType } from "@/types/database.types";
 
 /**
  * Quick-action link builders for a booking's OWN phone/address — distinct
@@ -10,6 +13,21 @@ import { formatDollars } from "@/lib/format-currency";
 
 export function bookingPhoneHref(phone: string): string {
   return `tel:${phone.replace(/\D/g, "")}`;
+}
+
+/** A single confirmed pickup or delivery window, as stored on a booking. */
+export interface ConfirmedWindow {
+  date: string;
+  time: string;
+}
+
+/** "2026-09-02" -> "Wed, Sep 2" — the same short date format already used across the admin UI. */
+function formatMessageDate(dateStr: string): string {
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 /**
@@ -30,19 +48,76 @@ export function bookingSmsHref(phone: string, body?: string): string {
  * is null until the owner has real Zelle-ready details to share — once
  * that's set, it's appended automatically and this function never needs to
  * change again for that reason alone.
+ *
+ * `confirmedDelivery` is optional and omitted gracefully: older/legacy rows
+ * can have a quote without complete confirmed delivery fields yet (times
+ * negotiation and quoting are independent flows), so passing null/undefined
+ * here reproduces the original approved wording exactly, with no dangling
+ * or malformed delivery sentence.
  */
-export function buildQuoteTextMessage(customerName: string, quoteTotalCents: number): string {
+export function buildQuoteTextMessage(
+  customerName: string,
+  quoteTotalCents: number,
+  confirmedDelivery?: ConfirmedWindow | null
+): string {
   const zelleDetail = ZELLE_RECIPIENT_DETAIL ? ` (Zelle: ${ZELLE_RECIPIENT_DETAIL})` : "";
+  const deliverySentence = confirmedDelivery
+    ? `We'll deliver it back ${formatMessageDate(confirmedDelivery.date)}, ${windowLabel(confirmedDelivery.time)}. `
+    : "";
   return (
     `Hi ${customerName}, this is Mars Laundromat. Your order total is ${formatDollars(quoteTotalCents)}. ` +
+    deliverySentence +
     `Cash or Zelle accepted${zelleDetail}. You can pay cash at the door when we deliver. ` +
     `Please reply if you have any questions.`
   );
 }
 
 /** SMS deep link for the assisted quote-text button — see buildQuoteTextMessage(). */
-export function bookingQuoteTextHref(phone: string, customerName: string, quoteTotalCents: number): string {
-  return bookingSmsHref(phone, buildQuoteTextMessage(customerName, quoteTotalCents));
+export function bookingQuoteTextHref(
+  phone: string,
+  customerName: string,
+  quoteTotalCents: number,
+  confirmedDelivery?: ConfirmedWindow | null
+): string {
+  return bookingSmsHref(phone, buildQuoteTextMessage(customerName, quoteTotalCents, confirmedDelivery));
+}
+
+/**
+ * The pickup-confirmation message: sent once staff have approved/saved a
+ * complete confirmed pickup AND delivery time (the caller — TimeEditor — only
+ * renders the "Text Pickup Confirmation" button once both are non-null, so
+ * neither ConfirmedWindow here is optional). Deliberately says nothing about
+ * price: the total isn't known until the order is weighed/counted at the
+ * store, which is exactly what this message tells the customer to expect
+ * next — see buildQuoteTextMessage() for the separate, later quote text.
+ */
+export function buildPickupConfirmationMessage(
+  customerName: string,
+  serviceType: ServiceType,
+  confirmedPickup: ConfirmedWindow,
+  confirmedDelivery: ConfirmedWindow
+): string {
+  return (
+    `Hi ${customerName}, this is Mars Laundromat. Your ${SERVICE_TYPE_CUSTOMER_LABELS[serviceType]} pickup is confirmed for ` +
+    `${formatMessageDate(confirmedPickup.date)}, ${windowLabel(confirmedPickup.time)}. ` +
+    `We'll deliver it back ${formatMessageDate(confirmedDelivery.date)}, ${windowLabel(confirmedDelivery.time)}. ` +
+    `We'll text your final total once we've received your order and finished weighing/counting it. ` +
+    `Please reply if you have any questions.`
+  );
+}
+
+/** SMS deep link for the assisted pickup-confirmation button — see buildPickupConfirmationMessage(). */
+export function bookingPickupConfirmationTextHref(
+  phone: string,
+  customerName: string,
+  serviceType: ServiceType,
+  confirmedPickup: ConfirmedWindow,
+  confirmedDelivery: ConfirmedWindow
+): string {
+  return bookingSmsHref(
+    phone,
+    buildPickupConfirmationMessage(customerName, serviceType, confirmedPickup, confirmedDelivery)
+  );
 }
 
 /**

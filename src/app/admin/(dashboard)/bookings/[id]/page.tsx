@@ -70,6 +70,9 @@ export default async function AdminBookingDetailPage(props: PageProps<"/admin/bo
           <TimeEditor
             bookingId={booking.id}
             status={booking.status}
+            customerName={booking.name}
+            customerPhone={booking.phone}
+            serviceType={booking.service_type}
             preferredPickupDate={booking.preferred_pickup_date}
             preferredPickupTime={booking.preferred_pickup_time}
             preferredDeliveryDate={booking.preferred_delivery_date}

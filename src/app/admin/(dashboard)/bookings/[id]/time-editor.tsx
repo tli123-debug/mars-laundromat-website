@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getWindowsForDate } from "@/lib/booking-hours";
 import { windowLabel } from "@/lib/validations/booking-schema";
 import { isPreLifecycle } from "@/lib/time-proposal-validation";
-import type { BookingStatus } from "@/types/database.types";
+import { bookingPickupConfirmationTextHref } from "@/lib/booking-links";
+import type { BookingStatus, ServiceType } from "@/types/database.types";
 import { approveRequestedTime, clearProposedTime, markTimesConfirmed, saveProposedTime } from "./actions";
 
 function formatDate(dateStr: string | null): string | null {
@@ -24,6 +25,9 @@ function formatDate(dateStr: string | null): string | null {
 export function TimeEditor({
   bookingId,
   status,
+  customerName,
+  customerPhone,
+  serviceType,
   preferredPickupDate,
   preferredPickupTime,
   preferredDeliveryDate,
@@ -35,6 +39,9 @@ export function TimeEditor({
 }: {
   bookingId: string;
   status: BookingStatus;
+  customerName: string;
+  customerPhone: string;
+  serviceType: ServiceType;
   preferredPickupDate: string;
   preferredPickupTime: string;
   preferredDeliveryDate: string | null;
@@ -121,6 +128,21 @@ export function TimeEditor({
             Approve Requested Time 批准请求时间
           </Button>
         )}
+        {confirmedPickupDate && confirmedPickupTime && confirmedDeliveryDate && confirmedDeliveryTime && (
+          <Button asChild size="sm" variant="outline">
+            <a
+              href={bookingPickupConfirmationTextHref(
+                customerPhone,
+                customerName,
+                serviceType,
+                { date: confirmedPickupDate, time: confirmedPickupTime },
+                { date: confirmedDeliveryDate, time: confirmedDeliveryTime }
+              )}
+            >
+              Text Pickup Confirmation 确认取件短信
+            </a>
+          </Button>
+        )}
         <Button size="sm" variant="outline" disabled={isPending} onClick={() => setEditing((v) => !v)}>
           {saveButtonLabel}
         </Button>
@@ -145,6 +167,13 @@ export function TimeEditor({
           </Button>
         )}
       </div>
+      {confirmedPickupDate && confirmedPickupTime && confirmedDeliveryDate && confirmedDeliveryTime && (
+        <p className="text-xs text-muted-foreground">
+          Text Pickup Confirmation opens a prefilled message in your phone&apos;s texting app — nothing
+          is sent automatically. Review it and send it there.
+          点击"确认取件短信"会在手机短信应用中打开预填信息——不会自动发送，请核对后自行发送。
+        </p>
+      )}
 
       {editing && (
         <div className="space-y-3 rounded-lg border border-border p-3">

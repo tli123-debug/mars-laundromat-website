@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   bookingMapsHref,
   bookingPhoneHref,
+  bookingPickupConfirmationTextHref,
   bookingQuoteTextHref,
   bookingSmsHref,
+  buildPickupConfirmationMessage,
   buildQuoteTextMessage,
 } from "./booking-links";
 
@@ -57,6 +59,31 @@ describe("buildQuoteTextMessage", () => {
   it("uses the customer's real name in place of a placeholder", () => {
     expect(buildQuoteTextMessage("Wei Chen", 4800)).toMatch(/^Hi Wei Chen,/);
   });
+
+  it("never includes Zelle recipient details while ZELLE_RECIPIENT_DETAIL stays null, only the fixed 'accepted' wording", () => {
+    const message = buildQuoteTextMessage("Jane", 4800);
+    expect(message).toContain("Cash or Zelle accepted.");
+    expect(message).not.toContain("(Zelle:");
+  });
+
+  it("includes the confirmed delivery date/window when passed, inserted between the total and the payment wording", () => {
+    const message = buildQuoteTextMessage("Jane Rivera", 4800, { date: "2026-09-03", time: "18:00" });
+    expect(message).toBe(
+      "Hi Jane Rivera, this is Mars Laundromat. Your order total is $48. " +
+        "We'll deliver it back Thu, Sep 3, 6:00 PM–7:00 PM. " +
+        "Cash or Zelle accepted. You can pay cash at the door when we deliver. Please reply if you have any questions."
+    );
+  });
+
+  it("falls back gracefully to the original wording when confirmedDelivery is explicitly null (incomplete confirmed delivery fields)", () => {
+    expect(buildQuoteTextMessage("Jane Rivera", 4800, null)).toBe(buildQuoteTextMessage("Jane Rivera", 4800));
+  });
+
+  it("falls back gracefully when confirmedDelivery is simply omitted (legacy call sites)", () => {
+    expect(buildQuoteTextMessage("Jane Rivera", 4800, undefined)).toBe(
+      buildQuoteTextMessage("Jane Rivera", 4800)
+    );
+  });
 });
 
 describe("bookingQuoteTextHref", () => {
@@ -71,6 +98,91 @@ describe("bookingQuoteTextHref", () => {
     const href = bookingQuoteTextHref("7185550134", "Jane Rivera", 4800);
     const decoded = decodeURIComponent(href.split("?body=")[1]);
     expect(decoded).toContain("$48.");
+    expect(decoded).toContain("Please reply if you have any questions.");
+  });
+
+  it("passes a confirmed delivery window through to the encoded message", () => {
+    const href = bookingQuoteTextHref("7185550134", "Jane Rivera", 4800, {
+      date: "2026-09-03",
+      time: "18:00",
+    });
+    const decoded = decodeURIComponent(href.split("?body=")[1]);
+    expect(decoded).toContain("We'll deliver it back Thu, Sep 3, 6:00 PM–7:00 PM.");
+  });
+});
+
+describe("buildPickupConfirmationMessage", () => {
+  const pickup = { date: "2026-09-02", time: "09:00" };
+  const delivery = { date: "2026-09-03", time: "18:00" };
+
+  it("includes the customer's real name, not a placeholder", () => {
+    expect(buildPickupConfirmationMessage("Wei Chen", "wash_and_fold", pickup, delivery)).toMatch(
+      /^Hi Wei Chen,/
+    );
+  });
+
+  it("uses clear customer-facing English for each service type, never the internal bilingual/staff labels", () => {
+    const washAndFold = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
+    const dryCleaning = buildPickupConfirmationMessage("Jane", "dry_cleaning", pickup, delivery);
+    const both = buildPickupConfirmationMessage("Jane", "both", pickup, delivery);
+    expect(washAndFold).toContain("Your Wash & Fold pickup is confirmed");
+    expect(dryCleaning).toContain("Your Dry Cleaning & Ironing pickup is confirmed");
+    expect(both).toContain("Your Wash & Fold and Dry Cleaning & Ironing pickup is confirmed");
+    for (const message of [washAndFold, dryCleaning, both]) {
+      expect(message).not.toMatch(/[一-鿿]/); // no Chinese characters — English-only per spec
+      expect(message).not.toContain("Both Services"); // the internal admin-badge shorthand
+    }
+  });
+
+  it("formats the confirmed pickup date and one-hour window correctly", () => {
+    const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
+    expect(message).toContain("confirmed for Wed, Sep 2, 9:00 AM–10:00 AM.");
+  });
+
+  it("formats the confirmed delivery date and window correctly", () => {
+    const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
+    expect(message).toContain("We'll deliver it back Thu, Sep 3, 6:00 PM–7:00 PM.");
+  });
+
+  it("states the final total will be texted after the order is received and weighed/counted", () => {
+    const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
+    expect(message).toContain("We'll text your final total once we've received your order and finished weighing/counting it.");
+  });
+
+  it("invites a reply for questions", () => {
+    const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
+    expect(message).toContain("Please reply if you have any questions.");
+  });
+
+  it("never mentions price, payment, or Zelle — that's the separate, later quote text", () => {
+    const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
+    expect(message).not.toMatch(/\$\d/);
+    expect(message).not.toContain("Zelle");
+    expect(message).not.toContain("Cash");
+  });
+});
+
+describe("bookingPickupConfirmationTextHref", () => {
+  const pickup = { date: "2026-09-02", time: "09:00" };
+  const delivery = { date: "2026-09-03", time: "18:00" };
+
+  it("combines the phone and message into one properly-encoded sms: link", () => {
+    const href = bookingPickupConfirmationTextHref(
+      "(718) 555-0134",
+      "Jane Rivera",
+      "wash_and_fold",
+      pickup,
+      delivery
+    );
+    expect(href.startsWith("sms:7185550134?body=")).toBe(true);
+    const decoded = decodeURIComponent(href.split("?body=")[1]);
+    expect(decoded).toBe(buildPickupConfirmationMessage("Jane Rivera", "wash_and_fold", pickup, delivery));
+  });
+
+  it("round-trips through encode/decode without corrupting punctuation or the en dash", () => {
+    const href = bookingPickupConfirmationTextHref("7185550134", "Jane Rivera", "both", pickup, delivery);
+    const decoded = decodeURIComponent(href.split("?body=")[1]);
+    expect(decoded).toContain("9:00 AM–10:00 AM");
     expect(decoded).toContain("Please reply if you have any questions.");
   });
 });

@@ -13,6 +13,19 @@ export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
   both: "Both Services 两种服务",
 };
 
+/**
+ * Plain-English, customer-facing labels — for SMS copy sent directly to
+ * customers, where the bilingual staff-facing SERVICE_TYPE_LABELS above
+ * (and especially its "Both Services" shorthand) would be unclear or out of
+ * place. See buildPickupConfirmationMessage() in booking-links.ts, its only
+ * consumer.
+ */
+export const SERVICE_TYPE_CUSTOMER_LABELS: Record<ServiceType, string> = {
+  wash_and_fold: "Wash & Fold",
+  dry_cleaning: "Dry Cleaning & Ironing",
+  both: "Wash & Fold and Dry Cleaning & Ironing",
+};
+
 /** Null when neither is selected — callers must require at least one. */
 export function normalizeServiceType(washAndFold: boolean, dryCleaning: boolean): ServiceType | null {
   if (washAndFold && dryCleaning) return "both";

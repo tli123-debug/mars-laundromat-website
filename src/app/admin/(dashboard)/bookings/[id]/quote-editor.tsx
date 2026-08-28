@@ -251,7 +251,16 @@ export function QuoteEditor({ booking }: { booking: BookingRow }) {
         </Button>
         {booking.quote_total_cents !== null && booking.quote_total_cents > 0 && (
           <Button asChild size="sm" variant="outline">
-            <a href={bookingQuoteTextHref(booking.phone, booking.name, booking.quote_total_cents)}>
+            <a
+              href={bookingQuoteTextHref(
+                booking.phone,
+                booking.name,
+                booking.quote_total_cents,
+                booking.confirmed_delivery_date && booking.confirmed_delivery_time
+                  ? { date: booking.confirmed_delivery_date, time: booking.confirmed_delivery_time }
+                  : null
+              )}
+            >
               Text Quote 发报价短信
             </a>
           </Button>
