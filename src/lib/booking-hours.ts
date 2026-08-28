@@ -170,8 +170,21 @@ export function isSameDayEligible(dateStr: string, opts: { now?: Date } = {}): b
  */
 export const STANDARD_FLEXIBLE_DELIVERY_GAP_HOURS = 22;
 
-function valueToMinutes(value: string): number {
-  const [hours, minutes] = value.slice(0, 5).split(":").map(Number);
+/**
+ * Parses a stored "HH:MM" or Postgres "HH:MM:SS" value into minutes since
+ * midnight — or null if it isn't a genuine two-digit-hour/two-digit-minute
+ * value in range (hours 00-23, minutes 00-59). Deliberately returns null
+ * rather than clamping or otherwise guessing at a malformed value's intent
+ * (e.g. "25:00" is rejected outright, never silently read as "01:00" the
+ * next day) — callers treat null as "no valid schedule can be computed,"
+ * never as a normalized time.
+ */
+function valueToMinutes(value: string): number | null {
+  const match = /^(\d{2}):(\d{2})/.exec(value);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
   return hours * 60 + minutes;
 }
 
@@ -179,14 +192,20 @@ function valueToMinutes(value: string): number {
  * The earliest a Standard/Flexible delivery window may start, as an
  * absolute (date, minutes-since-midnight) pair — the pickup window's end
  * (start + 1 hour) plus the 22-hour gap, normalized across the day
- * boundary that sum almost always crosses.
+ * boundary that sum almost always crosses. Returns null when pickupTime
+ * isn't a real, well-formed time — there's no threshold to compute from a
+ * malformed value, and this must never throw: a hand-crafted or otherwise
+ * invalid preferredPickupTime still has to flow through bookingSchema's
+ * superRefine (which reports its own "please choose an available pickup
+ * time" issue) without an uncaught exception aborting validation first.
  */
 export function earliestStandardFlexibleDelivery(
   pickupDate: string,
   pickupTime: string
-): { date: string; minutes: number } {
-  const thresholdMinutes =
-    valueToMinutes(pickupTime) + WINDOW_DURATION_MINUTES + STANDARD_FLEXIBLE_DELIVERY_GAP_HOURS * 60;
+): { date: string; minutes: number } | null {
+  const pickupMinutes = valueToMinutes(pickupTime);
+  if (pickupMinutes === null) return null;
+  const thresholdMinutes = pickupMinutes + WINDOW_DURATION_MINUTES + STANDARD_FLEXIBLE_DELIVERY_GAP_HOURS * 60;
   const daysPast = Math.floor(thresholdMinutes / (24 * 60));
   return {
     date: daysPast === 0 ? pickupDate : addDays(pickupDate, daysPast),
@@ -201,9 +220,13 @@ export function earliestStandardFlexibleDelivery(
  * gap. Once deliveryDate is strictly after the threshold date every window
  * qualifies (this is why Flexible's pickup+2 option always satisfies the
  * gap on its own — the threshold always lands on pickup+1); none qualify
- * before the threshold date. Single source of truth for the public form's
- * option filtering, its Zod validation, and anywhere else a Standard/
- * Flexible delivery window needs checking against its pickup.
+ * before the threshold date. A malformed pickupTime yields no threshold at
+ * all, so this returns no windows rather than throwing — the caller's own
+ * pickup-time validation (e.g. bookingSchema's separate, existing "please
+ * choose an available pickup time" issue) is what actually surfaces the
+ * problem to the user. Single source of truth for the public form's option
+ * filtering, its Zod validation, and anywhere else a Standard/Flexible
+ * delivery window needs checking against its pickup.
  */
 export function getStandardFlexibleDeliveryWindows(
   pickupDate: string,
@@ -212,8 +235,12 @@ export function getStandardFlexibleDeliveryWindows(
   opts: { now?: Date; excludePast?: boolean } = {}
 ): TimeSlot[] {
   const threshold = earliestStandardFlexibleDelivery(pickupDate, pickupTime);
+  if (!threshold) return [];
   if (deliveryDate < threshold.date) return [];
   const windows = getWindowsForDate(deliveryDate, opts);
   if (deliveryDate > threshold.date) return windows;
-  return windows.filter((w) => valueToMinutes(w.value) >= threshold.minutes);
+  return windows.filter((w) => {
+    const minutes = valueToMinutes(w.value);
+    return minutes !== null && minutes >= threshold.minutes;
+  });
 }

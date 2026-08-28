@@ -78,6 +78,18 @@ describe("bookingSchema — pickup date/time", () => {
     const result = bookingSchema.safeParse(baseInput({ preferredPickupTime: "03:17" }));
     expect(result.success).toBe(false);
   });
+
+  it("rejects a nonempty malformed pickup time without throwing", () => {
+    // Regression test: a malformed preferredPickupTime used to reach
+    // getStandardFlexibleDeliveryWindows() unguarded, where valueToMinutes()
+    // produced NaN and addDays(pickupDate, NaN) threw "RangeError: Invalid
+    // time value" instead of failing validation normally.
+    for (const malformed of ["not-a-time", "25:00", "10:75"]) {
+      expect(() => bookingSchema.safeParse(baseInput({ preferredPickupTime: malformed }))).not.toThrow();
+      const result = bookingSchema.safeParse(baseInput({ preferredPickupTime: malformed }));
+      expect(result.success).toBe(false);
+    }
+  });
 });
 
 describe("bookingSchema — standard speed", () => {

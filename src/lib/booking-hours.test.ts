@@ -225,6 +225,42 @@ describe("earliestStandardFlexibleDelivery / getStandardFlexibleDeliveryWindows 
     const threshold = earliestStandardFlexibleDelivery(PICKUP_DATE, "18:00:00");
     expect(threshold).toEqual({ date: NEXT_DAY, minutes: 17 * 60 });
   });
+
+  describe("malformed pickup time — must never throw", () => {
+    it("earliestStandardFlexibleDelivery returns null for a non-time string, not a thrown error", () => {
+      expect(() => earliestStandardFlexibleDelivery(PICKUP_DATE, "not-a-time")).not.toThrow();
+      expect(earliestStandardFlexibleDelivery(PICKUP_DATE, "not-a-time")).toBeNull();
+    });
+
+    it("getStandardFlexibleDeliveryWindows returns an empty array for a non-time string", () => {
+      expect(() => getStandardFlexibleDeliveryWindows(PICKUP_DATE, "not-a-time", NEXT_DAY)).not.toThrow();
+      expect(getStandardFlexibleDeliveryWindows(PICKUP_DATE, "not-a-time", NEXT_DAY)).toEqual([]);
+    });
+
+    it("rejects an out-of-range hour ('25:00') without throwing, returning no windows", () => {
+      expect(earliestStandardFlexibleDelivery(PICKUP_DATE, "25:00")).toBeNull();
+      expect(getStandardFlexibleDeliveryWindows(PICKUP_DATE, "25:00", NEXT_DAY)).toEqual([]);
+    });
+
+    it("rejects an out-of-range minute ('10:75') without throwing, returning no windows", () => {
+      expect(earliestStandardFlexibleDelivery(PICKUP_DATE, "10:75")).toBeNull();
+      expect(getStandardFlexibleDeliveryWindows(PICKUP_DATE, "10:75", NEXT_DAY)).toEqual([]);
+    });
+
+    it("does not silently normalize a malformed time into some other valid time", () => {
+      // "25:00" must never be read as "01:00" the next day, or "10:75" as
+      // "11:15" — both stay rejected outright rather than reinterpreted.
+      const misreadAsOneAM = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "25:00", NEXT_DAY);
+      const misreadAsElevenFifteen = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "10:75", NEXT_DAY);
+      expect(misreadAsOneAM).toEqual([]);
+      expect(misreadAsElevenFifteen).toEqual([]);
+    });
+
+    it("rejects an empty string without throwing", () => {
+      expect(earliestStandardFlexibleDelivery(PICKUP_DATE, "")).toBeNull();
+      expect(getStandardFlexibleDeliveryWindows(PICKUP_DATE, "", NEXT_DAY)).toEqual([]);
+    });
+  });
 });
 
 describe("formatClockLabel", () => {
