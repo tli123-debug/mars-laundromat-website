@@ -22,7 +22,7 @@ export const home = {
 
   services: {
     heading: "One pickup, however you need it",
-    body: "Book Wash & Fold, Dry Cleaning & Ironing, or both together — everything comes back on the same trip.",
+    body: "Book Wash & Fold, Dry Cleaning & Ironing, or both together since everything comes back on the same trip.",
     items: [
       {
         title: "Wash & Fold",

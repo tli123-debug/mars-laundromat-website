@@ -7,7 +7,7 @@ export const dryCleaning = {
     eyebrow: "Dry Cleaning & Ironing",
     headline: "Professional dry cleaning, picked up and delivered.",
     subheadline:
-      "Send us your dry cleaning alone, or combine it with a Wash & Fold pickup — either way, we count and inspect everything, and confirm your quote before it ever leaves our hands.",
+      "Send us your dry cleaning alone, or combine it with a Wash & Fold pickup. Either way, we count and inspect everything, and confirm your quote before it ever leaves our hands.",
   },
 
   howItWorks: {
@@ -35,6 +35,6 @@ export const dryCleaning = {
     subheading: "These are our approved starting retail prices, per item.",
     laundryShirtNote: "Laundry Shirt pricing includes washing, drying, and ironing.",
     disclaimer:
-      "These are starting prices, not final quotes. Your actual total depends on each garment's type, material, construction, and condition, and is always confirmed after we've counted and inspected everything — never before.",
+      "For nearly all garments, the starting price shown is the price you'll pay. Surcharges apply only to select specialty garments based on their material, construction, or condition. We'll always confirm your exact total after counting and inspecting everything.",
   },
 } as const;

@@ -304,7 +304,7 @@ export function BookingForm() {
             <Label htmlFor="washAndFold" className="grid gap-1 font-normal">
               <span className="text-sm font-semibold text-foreground">Wash & Fold</span>
               <span className="text-sm font-normal text-muted-foreground">
-                Everyday laundry — washed, dried, and neatly folded.
+                Everyday laundry: washed, dried, and neatly folded.
               </span>
             </Label>
           </div>
@@ -322,7 +322,7 @@ export function BookingForm() {
             <Label htmlFor="dryCleaning" className="grid gap-1 font-normal">
               <span className="text-sm font-semibold text-foreground">Dry Cleaning & Ironing</span>
               <span className="text-sm font-normal text-muted-foreground">
-                Suits, dresses, and other garments — counted, inspected, and priced by our team.
+                Suits, dresses, and other garments: counted, inspected, and priced by our team.
               </span>
             </Label>
           </div>
