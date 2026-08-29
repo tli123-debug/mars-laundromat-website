@@ -37,7 +37,7 @@ export default function ContactPage() {
               href={phoneHref()}
               className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#25D366] px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
-              {contact.phone.cta.label} — {siteConfig.phoneNumber}
+              {contact.phone.cta.label}: {siteConfig.phoneNumber}
             </a>
           </div>
 

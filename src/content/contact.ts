@@ -12,6 +12,6 @@ export const contact = {
   },
   visit: {
     heading: "Visit the store",
-    body: "Stop by any time we're open — and say hello to the garden on your way in.",
+    body: "Stop by any time we're open, and say hello to the garden on your way in.",
   },
 } as const;
