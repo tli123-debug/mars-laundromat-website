@@ -40,10 +40,6 @@ export const bookingSchema = z
     washAndFold: z.boolean(),
     dryCleaning: z.boolean(),
     dryCleaningItemDescription: z.string().trim().max(500).optional().or(z.literal("")),
-    // Plain boolean, not z.literal(true) like smsConsent below — this is
-    // only required when dryCleaning is selected, so it can't be
-    // unconditionally required at the shape level.
-    dryCleaningBagAcknowledgement: z.boolean(),
     preferredPickupDate: z.iso.date({ error: "Please choose a pickup date" }),
     preferredPickupTime: z.string().min(1, { error: "Please choose a pickup time" }),
     preferredDeliveryDate: z.iso.date({ error: "Please choose a delivery date" }),
@@ -70,14 +66,6 @@ export const bookingSchema = z
         path: ["washAndFold"],
       });
       return; // nothing else is meaningful without knowing what's being booked
-    }
-
-    if (data.dryCleaning && data.dryCleaningBagAcknowledgement !== true) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Please confirm you'll bag your dry-cleaning items separately from Wash & Fold",
-        path: ["dryCleaningBagAcknowledgement"],
-      });
     }
 
     const washAndFoldOnly = data.washAndFold && !data.dryCleaning;
@@ -226,7 +214,6 @@ export const bookingFormDefaults: BookingInput = {
   washAndFold: true,
   dryCleaning: false,
   dryCleaningItemDescription: "",
-  dryCleaningBagAcknowledgement: false,
   preferredPickupDate: "",
   preferredPickupTime: "",
   preferredDeliveryDate: "",
@@ -251,23 +238,21 @@ export const bookingFormDefaults: BookingInput = {
  * Cleaning/Both's fixed pickup+4 date are never both valid for the same
  * stored value. serviceSpeed resets to undefined when dry cleaning becomes
  * selected (it's hidden and unused), or back to "standard" when returning to
- * Wash & Fold-only (it becomes required again). The dry-cleaning-only fields
- * always clear to their unselected defaults — moving into dry cleaning finds
- * them already blank (they were hidden), and moving out of it must blank
- * them so they don't resubmit hidden, stale content.
+ * Wash & Fold-only (it becomes required again). The dry-cleaning item
+ * description always clears to its unselected default — moving into dry
+ * cleaning finds it already blank (it was hidden), and moving out of it must
+ * blank it so it doesn't resubmit hidden, stale content.
  */
 export function fieldsToResetOnServiceChange(dryCleaningSelected: boolean): {
   serviceSpeed: ServiceSpeed | undefined;
   preferredDeliveryDate: string;
   preferredDeliveryTime: string;
   dryCleaningItemDescription: string;
-  dryCleaningBagAcknowledgement: boolean;
 } {
   return {
     serviceSpeed: dryCleaningSelected ? undefined : "standard",
     preferredDeliveryDate: "",
     preferredDeliveryTime: "",
     dryCleaningItemDescription: "",
-    dryCleaningBagAcknowledgement: false,
   };
 }

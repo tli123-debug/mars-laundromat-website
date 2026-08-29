@@ -26,6 +26,22 @@ export const SERVICE_TYPE_CUSTOMER_LABELS: Record<ServiceType, string> = {
   both: "Wash & Fold and Dry Cleaning & Ironing",
 };
 
+/**
+ * Color treatment for the admin ServiceTypeBadge — a Record<ServiceType,
+ * string> so a future ServiceType without an entry is a compile error, not
+ * a silently unstyled badge. Applied as a className on top of the badge's
+ * outline variant (border + text only; the badge's own background stays
+ * subtle) so the color supplements the bilingual label rather than
+ * replacing it. Shared here (not colocated in ServiceTypeBadge itself) so
+ * it stays next to SERVICE_TYPE_LABELS, the other thing every renderer of
+ * the badge must agree on.
+ */
+export const SERVICE_TYPE_BADGE_STYLES: Record<ServiceType, string> = {
+  wash_and_fold: "border-blue-200 bg-blue-50 text-blue-900",
+  dry_cleaning: "border-red-200 bg-red-50 text-red-900",
+  both: "border-purple-200 bg-purple-50 text-purple-900",
+};
+
 /** Null when neither is selected — callers must require at least one. */
 export function normalizeServiceType(washAndFold: boolean, dryCleaning: boolean): ServiceType | null {
   if (washAndFold && dryCleaning) return "both";

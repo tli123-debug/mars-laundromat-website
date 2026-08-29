@@ -4,9 +4,13 @@ import {
   canChangeServiceType,
   normalizeServiceType,
   resolveServiceSpeed,
+  SERVICE_TYPE_BADGE_STYLES,
   serviceTypeIncludesDryCleaning,
   serviceTypeIncludesWashAndFold,
 } from "./service-type";
+import type { ServiceType } from "@/types/database.types";
+
+const ALL_SERVICE_TYPES: ServiceType[] = ["wash_and_fold", "dry_cleaning", "both"];
 
 describe("normalizeServiceType", () => {
   it("both selected -> both", () => {
@@ -145,5 +149,18 @@ describe("buildServiceTypeChangePayload", () => {
     expect(payload).not.toHaveProperty("preferred_pickup_date");
     expect(payload).not.toHaveProperty("confirmed_pickup_date");
     expect(payload).not.toHaveProperty("confirmed_delivery_date");
+  });
+});
+
+describe("SERVICE_TYPE_BADGE_STYLES", () => {
+  it("has a non-empty style entry for every ServiceType", () => {
+    for (const type of ALL_SERVICE_TYPES) {
+      expect(SERVICE_TYPE_BADGE_STYLES[type]).toBeTruthy();
+    }
+  });
+
+  it("gives each service type a distinct color treatment", () => {
+    const styles = ALL_SERVICE_TYPES.map((type) => SERVICE_TYPE_BADGE_STYLES[type]);
+    expect(new Set(styles).size).toBe(ALL_SERVICE_TYPES.length);
   });
 });

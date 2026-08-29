@@ -66,7 +66,7 @@ export const booking = {
     ],
     itemDescriptionLabel: "What dry-cleaning items are you sending? (optional)",
     itemDescriptionPlaceholder: "2 suits, 3 shirts, 1 dress",
-    bagAcknowledgementLabel:
-      "I'll place my dry-cleaning items in a separate bag from my Wash & Fold laundry.",
+    bothBagReminder:
+      'Pack Wash & Fold and Dry Cleaning items in two separate bags. Clearly label each bag "Wash & Fold" or "Dry Cleaning" before pickup.',
   },
 } as const;

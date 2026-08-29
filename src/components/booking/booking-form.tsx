@@ -246,7 +246,6 @@ export function BookingForm() {
       setValue("preferredDeliveryDate", resets.preferredDeliveryDate);
       setValue("preferredDeliveryTime", resets.preferredDeliveryTime);
       setValue("dryCleaningItemDescription", resets.dryCleaningItemDescription);
-      setValue("dryCleaningBagAcknowledgement", resets.dryCleaningBagAcknowledgement);
       setSelectResetKey((key) => key + 1);
     }
 
@@ -363,31 +362,14 @@ export function BookingForm() {
               {...register("dryCleaningItemDescription")}
             />
           </div>
-          <div className="mt-4 grid gap-2">
-            <div className="flex items-start gap-3">
-              <Controller
-                control={control}
-                name="dryCleaningBagAcknowledgement"
-                render={({ field }) => (
-                  <Checkbox
-                    id="dryCleaningBagAcknowledgement"
-                    className="mt-0.5"
-                    checked={field.value === true}
-                    onCheckedChange={(checked) => field.onChange(checked === true)}
-                  />
-                )}
-              />
-              <Label
-                htmlFor="dryCleaningBagAcknowledgement"
-                className="text-sm font-normal leading-snug text-muted-foreground"
-              >
-                {bookingContent.dryCleaning.bagAcknowledgementLabel}
-              </Label>
+          {washAndFold && (
+            <div className="mt-4 rounded-xl border-2 border-primary/40 bg-primary/10 p-4">
+              <p className="text-sm text-foreground">
+                <strong className="font-semibold">Important:</strong>{" "}
+                {bookingContent.dryCleaning.bothBagReminder}
+              </p>
             </div>
-            {errors.dryCleaningBagAcknowledgement && (
-              <p className="text-sm text-destructive">{errors.dryCleaningBagAcknowledgement.message}</p>
-            )}
-          </div>
+          )}
         </div>
       )}
 

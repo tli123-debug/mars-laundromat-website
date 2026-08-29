@@ -21,7 +21,6 @@ function baseInput(overrides: Record<string, unknown> = {}) {
     washAndFold: true,
     dryCleaning: false,
     dryCleaningItemDescription: "",
-    dryCleaningBagAcknowledgement: false,
     preferredPickupDate: FUTURE_PICKUP_DATE,
     preferredPickupTime: pickupWindows()[0],
     preferredDeliveryDate: addDays(FUTURE_PICKUP_DATE, 1),
@@ -41,7 +40,6 @@ function dryCleaningInput(overrides: Record<string, unknown> = {}) {
   return baseInput({
     washAndFold: false,
     dryCleaning: true,
-    dryCleaningBagAcknowledgement: true,
     serviceSpeed: undefined,
     preferredDeliveryDate: deliveryDate,
     preferredDeliveryTime: getWindowsForDate(deliveryDate)[0].value,
@@ -399,22 +397,19 @@ describe("bookingSchema — Same-Day Rush is Wash & Fold-only", () => {
   });
 });
 
-describe("bookingSchema — bag separation acknowledgement", () => {
-  it("Dry Cleaning-only requires the acknowledgement", () => {
-    const result = bookingSchema.safeParse(dryCleaningInput({ dryCleaningBagAcknowledgement: false }));
-    expect(result.success).toBe(false);
+describe("bookingSchema — bag acknowledgement was removed (no field, no checkbox)", () => {
+  it("Dry Cleaning-only validates with no acknowledgement field present", () => {
+    expect(bookingSchema.safeParse(dryCleaningInput()).success).toBe(true);
   });
 
-  it("Both requires the acknowledgement", () => {
-    const result = bookingSchema.safeParse(bothInput({ dryCleaningBagAcknowledgement: false }));
-    expect(result.success).toBe(false);
+  it("Both validates with no acknowledgement field present", () => {
+    expect(bookingSchema.safeParse(bothInput()).success).toBe(true);
   });
 
-  it("Wash & Fold-only does not require the acknowledgement", () => {
-    const result = bookingSchema.safeParse(
-      baseInput({ washAndFold: true, dryCleaning: false, dryCleaningBagAcknowledgement: false })
+  it("Wash & Fold-only remains unaffected", () => {
+    expect(bookingSchema.safeParse(baseInput({ washAndFold: true, dryCleaning: false })).success).toBe(
+      true
     );
-    expect(result.success).toBe(true);
   });
 });
 
@@ -456,7 +451,6 @@ describe("fieldsToResetOnServiceChange", () => {
       preferredDeliveryDate: "",
       preferredDeliveryTime: "",
       dryCleaningItemDescription: "",
-      dryCleaningBagAcknowledgement: false,
     });
   });
 
@@ -466,7 +460,6 @@ describe("fieldsToResetOnServiceChange", () => {
       preferredDeliveryDate: "",
       preferredDeliveryTime: "",
       dryCleaningItemDescription: "",
-      dryCleaningBagAcknowledgement: false,
     });
   });
 });

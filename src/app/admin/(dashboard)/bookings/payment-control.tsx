@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { PaymentMethod } from "@/types/database.types";
 import { markBookingPaid, markBookingUnpaid } from "./actions";
@@ -44,12 +45,9 @@ export function PaymentControl({
   if (paid) {
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm">
-          Paid 已付款
-          {paymentMethod && (
-            <span className="text-muted-foreground"> · {METHOD_LABEL[paymentMethod]}</span>
-          )}
-        </span>
+        <Badge className="border-green-200 bg-green-50 text-green-900">
+          Paid 已付款{paymentMethod && ` · ${METHOD_LABEL[paymentMethod]}`}
+        </Badge>
         <Button variant="outline" size="sm" disabled={isPending} onClick={handleMarkUnpaid}>
           Mark Unpaid 标记未付款
         </Button>

@@ -19,6 +19,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { BOOKING_STATUS_STYLES } from "@/lib/booking-status-styles";
+import { cn } from "@/lib/utils";
 import type { BookingStatus } from "@/types/database.types";
 import { updateBookingStatus } from "./actions";
 
@@ -63,12 +65,16 @@ export function StatusSelect({
   return (
     <>
       <Select value={status} onValueChange={handleChange} disabled={isPending}>
-        <SelectTrigger size="sm" className="w-[180px]">
+        <SelectTrigger size="sm" className={cn("w-[180px]", BOOKING_STATUS_STYLES[status].trigger)}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
           {STATUS_OPTIONS.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className={BOOKING_STATUS_STYLES[option.value].item}
+            >
               {option.label}
             </SelectItem>
           ))}
