@@ -52,8 +52,8 @@ export function bookingSmsHref(phone: string, body?: string): string {
  * `confirmedDelivery` is optional and omitted gracefully: older/legacy rows
  * can have a quote without complete confirmed delivery fields yet (times
  * negotiation and quoting are independent flows), so passing null/undefined
- * here reproduces the original approved wording exactly, with no dangling
- * or malformed delivery sentence.
+ * here produces the same delivery-free message format, with no dangling or
+ * malformed delivery sentence.
  */
 export function buildQuoteTextMessage(
   customerName: string,
@@ -62,13 +62,14 @@ export function buildQuoteTextMessage(
 ): string {
   const zelleDetail = ZELLE_RECIPIENT_DETAIL ? ` (Zelle: ${ZELLE_RECIPIENT_DETAIL})` : "";
   const deliverySentence = confirmedDelivery
-    ? `We'll deliver it back ${formatMessageDate(confirmedDelivery.date)}, ${windowLabel(confirmedDelivery.time)}. `
+    ? `\nWe'll deliver it back ${formatMessageDate(confirmedDelivery.date)}, ${windowLabel(confirmedDelivery.time)}.`
     : "";
   return (
-    `Hi ${customerName}, this is Mars Laundromat. Your order total is ${formatDollars(quoteTotalCents)}. ` +
+    `Hi ${customerName}, this is Mars Laundromat.\n\n` +
+    `Your order total is ${formatDollars(quoteTotalCents)}.` +
     deliverySentence +
-    `Cash or Zelle accepted${zelleDetail}. You can pay cash at the door when we deliver. ` +
-    `Please reply if you have any questions.`
+    `\n\nCash or Zelle accepted${zelleDetail}. You can pay cash at the door when we deliver.` +
+    `\n\nPlease reply if you have any questions.`
   );
 }
 
@@ -98,11 +99,12 @@ export function buildPickupConfirmationMessage(
   confirmedDelivery: ConfirmedWindow
 ): string {
   return (
-    `Hi ${customerName}, this is Mars Laundromat. Your ${SERVICE_TYPE_CUSTOMER_LABELS[serviceType]} pickup is confirmed for ` +
-    `${formatMessageDate(confirmedPickup.date)}, ${windowLabel(confirmedPickup.time)}. ` +
-    `We'll deliver it back ${formatMessageDate(confirmedDelivery.date)}, ${windowLabel(confirmedDelivery.time)}. ` +
-    `We'll text your final total once we've received your order and finished weighing/counting it. ` +
-    `Please reply if you have any questions.`
+    `Hi ${customerName}, this is Mars Laundromat.\n\n` +
+    `Your ${SERVICE_TYPE_CUSTOMER_LABELS[serviceType]} pickup is confirmed for ` +
+    `${formatMessageDate(confirmedPickup.date)}, ${windowLabel(confirmedPickup.time)}.\n` +
+    `We'll deliver it back ${formatMessageDate(confirmedDelivery.date)}, ${windowLabel(confirmedDelivery.time)}.` +
+    `\n\nWe'll text your final total once we've received your order and finished weighing/counting it.` +
+    `\n\nPlease reply if you have any questions.`
   );
 }
 

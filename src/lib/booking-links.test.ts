@@ -44,7 +44,10 @@ describe("buildQuoteTextMessage", () => {
   it("matches the exact owner-approved wording, with no Zelle detail (owner hasn't provided one yet)", () => {
     const message = buildQuoteTextMessage("Jane Rivera", 4800);
     expect(message).toBe(
-      "Hi Jane Rivera, this is Mars Laundromat. Your order total is $48. Cash or Zelle accepted. You can pay cash at the door when we deliver. Please reply if you have any questions."
+      "Hi Jane Rivera, this is Mars Laundromat.\n\n" +
+        "Your order total is $48.\n\n" +
+        "Cash or Zelle accepted. You can pay cash at the door when we deliver.\n\n" +
+        "Please reply if you have any questions."
     );
   });
 
@@ -69,13 +72,15 @@ describe("buildQuoteTextMessage", () => {
   it("includes the confirmed delivery date/window when passed, inserted between the total and the payment wording", () => {
     const message = buildQuoteTextMessage("Jane Rivera", 4800, { date: "2026-09-03", time: "18:00" });
     expect(message).toBe(
-      "Hi Jane Rivera, this is Mars Laundromat. Your order total is $48. " +
-        "We'll deliver it back Thu, Sep 3, 6:00 PM–7:00 PM. " +
-        "Cash or Zelle accepted. You can pay cash at the door when we deliver. Please reply if you have any questions."
+      "Hi Jane Rivera, this is Mars Laundromat.\n\n" +
+        "Your order total is $48.\n" +
+        "We'll deliver it back Thu, Sep 3, 6:00 PM–7:00 PM.\n\n" +
+        "Cash or Zelle accepted. You can pay cash at the door when we deliver.\n\n" +
+        "Please reply if you have any questions."
     );
   });
 
-  it("falls back gracefully to the original wording when confirmedDelivery is explicitly null (incomplete confirmed delivery fields)", () => {
+  it("falls back gracefully to the delivery-free format when confirmedDelivery is explicitly null", () => {
     expect(buildQuoteTextMessage("Jane Rivera", 4800, null)).toBe(buildQuoteTextMessage("Jane Rivera", 4800));
   });
 
@@ -99,6 +104,17 @@ describe("bookingQuoteTextHref", () => {
     const decoded = decodeURIComponent(href.split("?body=")[1]);
     expect(decoded).toContain("$48.");
     expect(decoded).toContain("Please reply if you have any questions.");
+  });
+
+  it("preserves the quote message's paragraph and line-break formatting through the SMS link", () => {
+    const href = bookingQuoteTextHref("7185550134", "Jane Rivera", 4800, {
+      date: "2026-09-03",
+      time: "18:00",
+    });
+    const decoded = decodeURIComponent(href.split("?body=")[1]);
+    expect(decoded).toContain("Mars Laundromat.\n\nYour order total is $48.");
+    expect(decoded).toContain("$48.\nWe'll deliver it back");
+    expect(decoded).toContain("when we deliver.\n\nPlease reply");
   });
 
   it("passes a confirmed delivery window through to the encoded message", () => {
@@ -152,6 +168,13 @@ describe("buildPickupConfirmationMessage", () => {
   it("invites a reply for questions", () => {
     const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
     expect(message).toContain("Please reply if you have any questions.");
+  });
+
+  it("uses readable paragraph breaks and puts pickup and delivery on separate lines", () => {
+    const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
+    expect(message).toContain("Mars Laundromat.\n\nYour Wash & Fold pickup");
+    expect(message).toContain("9:00 AM–10:00 AM.\nWe'll deliver it back");
+    expect(message).toContain("weighing/counting it.\n\nPlease reply");
   });
 
   it("never mentions price, payment, or Zelle — that's the separate, later quote text", () => {
