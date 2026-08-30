@@ -33,7 +33,7 @@ export const home = {
       {
         title: "Dry Cleaning & Ironing",
         description: "Counted, inspected, and quoted before it ever leaves our hands.",
-        priceHint: `Starting garment prices listed online · ${dryCleaningMinimumNote}`,
+        priceHint: `Starting garment prices listed online – ${dryCleaningMinimumNote}`,
         href: "/services/dry-cleaning",
       },
     ],

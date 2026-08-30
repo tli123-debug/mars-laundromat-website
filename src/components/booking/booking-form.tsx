@@ -500,7 +500,7 @@ export function BookingForm() {
           {dryCleaning ? (
             <p className="flex h-9 items-center text-sm text-muted-foreground">
               {deliveryDate
-                ? `${formatDateDisplay(deliveryDate)} · 4 days after pickup`
+                ? `${formatDateDisplay(deliveryDate)} – 4 days after pickup`
                 : "Choose a pickup date first"}
             </p>
           ) : serviceSpeed === "flexible" ? (
@@ -553,7 +553,7 @@ export function BookingForm() {
           ) : (
             <p className="flex h-9 items-center text-sm text-muted-foreground">
               {deliveryDate
-                ? `${formatDateDisplay(deliveryDate)} · ${
+                ? `${formatDateDisplay(deliveryDate)} – ${
                     serviceSpeed === "same_day" ? "same day as pickup" : "next day after pickup"
                   }`
                 : "Choose a pickup date first"}
