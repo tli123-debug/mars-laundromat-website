@@ -15,15 +15,15 @@ export const dryCleaning = {
     items: [
       "We count and inspect your garments after pickup",
       "We confirm your quote before anything is sent to the cleaner",
-      "Ironing is included where appropriate — never a separate charge",
-      "Typically ready in 3–4 calendar days — online bookings schedule delivery on day 4, and we'll text you to arrange an earlier delivery if it's ready on day 3",
+      "Ironing is included where appropriate at no separate charge",
+      "Dry cleaning is typically ready in 3–4 calendar days. Online bookings schedule delivery on day 4. If it's ready on day 3, we'll text you to arrange an earlier delivery",
     ],
   },
 
   pricing: {
     heading: "How pricing works",
     dryCleaningOnly: `${formatDollars(DRY_CLEANING_MINIMUM_CENTS)} minimum charge for Dry Cleaning-only pickup & delivery orders`,
-    combined: `Combine Dry Cleaning with Wash & Fold and there's no separate Dry Cleaning minimum — your Wash & Fold items still keep their own ${formatDollars(MINIMUM_ORDER_CENTS)} minimum`,
+    combined: `Combine Dry Cleaning with Wash & Fold and there's no separate Dry Cleaning minimum. Your Wash & Fold items still have their own ${formatDollars(MINIMUM_ORDER_CENTS)} minimum`,
     combinedReturn: "Combined orders are returned together, once your dry cleaning is ready",
   },
 

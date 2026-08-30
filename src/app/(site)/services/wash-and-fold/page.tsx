@@ -7,7 +7,7 @@ import { images } from "@/content/images";
 export const metadata: Metadata = {
   title: "Wash & Fold",
   description:
-    "Pickup & delivery wash & fold in Park Slope, Brooklyn — $1.50/lb, $30 minimum, free pickup & delivery.",
+    "Pickup & delivery wash & fold in Park Slope, Brooklyn: $1.50/lb, $30 minimum, and free pickup & delivery.",
 };
 
 export default function WashAndFoldPage() {

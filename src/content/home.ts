@@ -44,7 +44,7 @@ export const home = {
     steps: [
       {
         title: "Book online",
-        description: "Tell us what you need and a preferred pickup window — takes about a minute.",
+        description: "Tell us what you need and choose a preferred pickup window. It takes about a minute.",
       },
       {
         title: "We confirm",

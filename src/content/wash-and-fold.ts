@@ -23,7 +23,7 @@ export const washAndFold = {
     heading: "How pricing works",
     items: [
       `${formatDollars(PRICE_PER_POUND_CENTS)} per billed pound`,
-      `${formatDollars(MINIMUM_ORDER_CENTS)} minimum charge — orders under ${MINIMUM_BILLABLE_WEIGHT_LB} lb are billed at the minimum`,
+      `${formatDollars(MINIMUM_ORDER_CENTS)} minimum charge: orders under ${MINIMUM_BILLABLE_WEIGHT_LB} lb are billed at the minimum`,
       "Weight is billed to the nearest whole pound",
       "Pickup & delivery are free for approved addresses in our service area",
       "Cash and Zelle are both accepted, at the same price",
@@ -51,6 +51,6 @@ export const washAndFold = {
 
   specialItems: {
     heading: "Specialty & oversized items",
-    body: "Comforters, blankets, rugs/floor mats, and pillows may carry a surcharge depending on their size and condition — we'll always let you know before it's added to your total.",
+    body: "Comforters, blankets, rugs/floor mats, and pillows may carry a surcharge depending on their size and condition. We'll always let you know before it's added to your total.",
   },
 } as const;

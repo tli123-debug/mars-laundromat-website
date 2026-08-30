@@ -21,11 +21,11 @@ export const booking = {
     items: [
       `${dollars(PRICE_PER_POUND_CENTS)} per billed pound, ${dollars(MINIMUM_ORDER_CENTS)} minimum charge`,
       `Orders under ${MINIMUM_BILLABLE_WEIGHT_LB} lb are charged the ${dollars(MINIMUM_ORDER_CENTS)} minimum`,
-      "The scale weight rounds to the nearest whole pound — exactly half a pound rounds upward",
+      "The scale weight rounds to the nearest whole pound. Exactly half a pound rounds upward",
       "Pickup & delivery are free for approved addresses in our service area",
       `Approved Same-Day Rush adds ${dollars(SAME_DAY_FEE_CENTS)}`,
       "Comforters, blankets, pillows, rugs/floor mats, and other specialty or oversized items may carry a separately disclosed surcharge",
-      "Laundry is weighed at the store — we'll text you the exact quote and payment options afterward",
+      "Laundry is weighed at the store. We'll text you the exact quote and payment options afterward",
       "This is a request, not an automatically confirmed appointment",
     ],
   },
@@ -33,14 +33,14 @@ export const booking = {
   sameDay: {
     disclosure: `Same-Day Rush is available when your pickup window ends by 12:00 PM (the latest eligible window is 11:00 AM–12:00 PM). Delivery will be that same evening, between 6:00–7:00 PM. The ${dollars(SAME_DAY_FEE_CENTS)} same-day fee only applies once our team approves your request.`,
     ineligibleToday:
-      "Same-Day Rush isn't available for today's pickup anymore — the latest eligible window has passed. Choose a different pickup date, or Standard/Flexible speed.",
+      "Same-Day Rush isn't available for today's pickup anymore because the latest eligible window has passed. Choose a different pickup date, or Standard/Flexible speed.",
   },
 
   // Shown for Standard/Flexible only — Same-Day has its own fixed evening
   // delivery (see sameDay.disclosure above) and is exempt from this gap.
   deliveryGap: {
     notice:
-      "Delivery windows open at least 22 hours after your pickup window ends — a scheduling buffer, not an exact processing-time guarantee.",
+      "Delivery windows open at least 22 hours after your pickup window ends. This is a scheduling buffer, not an exact processing-time guarantee.",
   },
 
   consent: {

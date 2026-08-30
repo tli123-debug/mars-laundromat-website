@@ -6,7 +6,7 @@ import { phoneHref, siteConfig } from "@/content/site-config";
 export const metadata: Metadata = {
   title: "Commercial Laundry",
   description:
-    "Mars Laundromat works with nearby businesses on a customized laundry arrangement — get in touch to start the conversation.",
+    "Mars Laundromat works with nearby businesses on a customized laundry arrangement. Get in touch to start the conversation.",
 };
 
 export default function CommercialPage() {
