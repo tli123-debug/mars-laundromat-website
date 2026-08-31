@@ -3,9 +3,11 @@ import {
   advanceByCadence,
   advanceToDueDate,
   cadenceDays,
+  decideSkipNextOccurrence,
   isEligibleForRecurringOffer,
   isValidRecurringFrequency,
   nextDayDeliveryDate,
+  normalizeAddress,
   normalizePhoneNumber,
   RECURRING_BADGE_LABELS,
   recurringBadgeKind,
@@ -194,6 +196,26 @@ describe("normalizePhoneNumber", () => {
   });
 });
 
+describe("normalizeAddress", () => {
+  it("trims leading/trailing whitespace", () => {
+    expect(normalizeAddress("  123 7th Ave  ")).toBe("123 7th ave");
+  });
+
+  it("lowercases", () => {
+    expect(normalizeAddress("123 7TH AVE")).toBe("123 7th ave");
+  });
+
+  it("equivalent addresses normalize identically", () => {
+    const normalized = normalizeAddress("123 7th Ave, Brooklyn, NY 11215");
+    expect(normalizeAddress("  123 7th ave, brooklyn, ny 11215  ")).toBe(normalized);
+    expect(normalizeAddress("123 7TH AVE, BROOKLYN, NY 11215")).toBe(normalized);
+  });
+
+  it("does not collapse internal whitespace differences (matches the SQL index's lower(btrim()) exactly, not a fuzzier match)", () => {
+    expect(normalizeAddress("123  7th Ave")).not.toBe(normalizeAddress("123 7th Ave"));
+  });
+});
+
 describe("RECURRING_BADGE_LABELS / recurringBadgeKind", () => {
   it("has a label for every possible badge kind", () => {
     expect(RECURRING_BADGE_LABELS.weekly).toBe("Recurring: Weekly 定期：每周");
@@ -228,6 +250,29 @@ describe("RECURRING_BADGE_LABELS / recurringBadgeKind", () => {
         const kind = recurringBadgeKind(status, frequency);
         expect(RECURRING_BADGE_LABELS[kind]).toBeTruthy();
       }
+    }
+  });
+});
+
+describe("decideSkipNextOccurrence", () => {
+  it("skip-before-generation: no booking exists yet -> just advance", () => {
+    expect(decideSkipNextOccurrence(null)).toEqual({ action: "advance_only" });
+  });
+
+  it("skip of a pending generated booking -> cancel it and advance", () => {
+    const result = decideSkipNextOccurrence({ id: "booking-1", status: "pending" });
+    expect(result).toEqual({ action: "cancel_and_advance", bookingId: "booking-1" });
+  });
+
+  it("an already-cancelled generated booking -> just advance, without re-cancelling", () => {
+    const result = decideSkipNextOccurrence({ id: "booking-1", status: "cancelled" });
+    expect(result).toEqual({ action: "advance_only" });
+  });
+
+  it("rejects when the generated booking has progressed past pending", () => {
+    for (const status of ["confirmed", "picked_up", "ready_for_delivery", "completed"] as const) {
+      const result = decideSkipNextOccurrence({ id: "booking-1", status });
+      expect(result.action).toBe("rejected");
     }
   });
 });

@@ -2,11 +2,21 @@ import Link from "next/link";
 import { StatusSelect } from "@/app/admin/(dashboard)/bookings/status-select";
 import { PaymentControl } from "@/app/admin/(dashboard)/bookings/payment-control";
 import { ServiceTypeBadge } from "@/app/admin/(dashboard)/bookings/service-type-badge";
+import { RecurringBadge } from "@/app/admin/(dashboard)/bookings/recurring-badge";
 import { windowLabel } from "@/lib/validations/booking-schema";
 import { bookingMapsHref, bookingPhoneHref, bookingSmsHref } from "@/lib/booking-links";
 import type { Database } from "@/types/database.types";
 
-type BookingRow = Database["public"]["Tables"]["bookings"]["Row"];
+// Includes the embedded recurring_schedules relation this card's caller
+// (today/page.tsx) fetches via recurring_schedules!bookings_recurring_
+// schedule_id_fkey — null for an ordinary booking, set only when this
+// booking is itself a generated recurring occurrence.
+type BookingRow = Database["public"]["Tables"]["bookings"]["Row"] & {
+  recurring_schedules: Pick<
+    Database["public"]["Tables"]["recurring_schedules"]["Row"],
+    "status" | "frequency"
+  > | null;
+};
 
 function formatDate(dateStr: string | null): string | null {
   if (!dateStr) return null;
@@ -86,6 +96,12 @@ export function BookingCard({ booking }: { booking: BookingRow }) {
               {booking.name}
             </Link>
             <ServiceTypeBadge serviceType={booking.service_type} />
+            {booking.recurring_schedules && (
+              <RecurringBadge
+                status={booking.recurring_schedules.status}
+                frequency={booking.recurring_schedules.frequency}
+              />
+            )}
           </div>
           <div className="text-sm text-muted-foreground">{booking.phone}</div>
           <div className="text-sm text-muted-foreground">{booking.address}</div>

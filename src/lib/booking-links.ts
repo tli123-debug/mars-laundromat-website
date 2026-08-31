@@ -123,6 +123,31 @@ export function bookingPickupConfirmationTextHref(
 }
 
 /**
+ * The exact owner-approved recurring-pickup offer, sent once after a
+ * completed order. Deliberately not parameterized by service type — it
+ * always says "recurring Wash & Fold," even for a completed Both Services
+ * order, since Recurring V1 never covers Dry Cleaning; the caller
+ * (isEligibleForRecurringOffer in recurring-schedule.ts) is what decides
+ * whether this offer should be shown at all for a given booking, not this
+ * function. No customer reply is ever interpreted automatically — this
+ * only opens a prefilled message for staff to review and send by hand,
+ * same as every other assisted-text button in this app.
+ */
+export function buildRecurringOfferMessage(customerName: string): string {
+  return (
+    `Hi ${customerName}, this is Mars Laundromat.\n\n` +
+    `Thank you for choosing us. We hope everything came back just the way you wanted.\n\n` +
+    `If you'd like, we can set up a recurring Wash & Fold pickup every week or every two weeks, so you won't need to book each time.\n\n` +
+    `Reply WEEKLY or EVERY 2 WEEKS if you're interested, or let us know if you have any questions.`
+  );
+}
+
+/** SMS deep link for the assisted recurring-offer button — see buildRecurringOfferMessage(). */
+export function bookingRecurringOfferTextHref(phone: string, customerName: string): string {
+  return bookingSmsHref(phone, buildRecurringOfferMessage(customerName));
+}
+
+/**
  * Keyless Google Maps search URL — no API key or billing dependency.
  * A customer's free-text address has no structured city/state field, so an
  * address that doesn't already mention Brooklyn gets the neighborhood/city/

@@ -142,6 +142,19 @@ export function normalizePhoneNumber(phone: string): string {
 }
 
 /**
+ * Canonical form for matching two customers' addresses regardless of
+ * whitespace/case — trim + lowercase, exactly matching the SQL expression
+ * recurring_schedules_active_customer_unique_idx uses (lower(btrim(address)))
+ * in supabase/migrations/20260830000000_recurring_pickups_v1.sql, so the
+ * Server Action's pre-check can give a friendly "already enrolled" error
+ * for the same pairs the database's own constraint would reject, before
+ * ever reaching it.
+ */
+export function normalizeAddress(address: string): string {
+  return address.trim().toLowerCase();
+}
+
+/**
  * The four bilingual badge states a recurring-linked booking or schedule
  * can show. "weekly"/"every_two_weeks" reuse RecurringFrequency's own
  * values directly (an active schedule's badge kind IS its frequency) so
@@ -181,6 +194,50 @@ export function recurringBadgeKind(
  * phone + normalized address happens in the Server Action that calls this
  * (Checkpoint 2), which then passes in a plain boolean.
  */
+/** The three possible outcomes of Skip Next, given whatever booking (if any) already exists for the occurrence being skipped. */
+export type SkipOutcome =
+  | { action: "advance_only" }
+  | { action: "cancel_and_advance"; bookingId: string }
+  | { action: "rejected"; reason: string };
+
+/**
+ * Pure decision logic for Skip Next, separated from setUpRecurringSchedule's
+ * sibling Server Action (skipNextOccurrence in
+ * src/app/admin/(dashboard)/recurring/actions.ts) so the three distinct
+ * outcomes are independently testable without a database:
+ *
+ * - No booking generated yet for this occurrence: just advance the
+ *   schedule — there's nothing else to touch.
+ * - A generated booking still pending: cancel it (status change only,
+ *   never delete) and advance the schedule.
+ * - A generated booking already cancelled (by hand, before Skip Next was
+ *   clicked): treat "this occurrence won't happen" as already satisfied —
+ *   advance without re-cancelling. Not literally named in the "still
+ *   pending" trigger condition, but consistent with Skip Next's actual
+ *   intent.
+ * - A generated booking that's progressed further (confirmed, picked up,
+ *   ready for delivery, or completed): reject outright. Skip Next never
+ *   overrides real, in-progress work — staff must handle that booking
+ *   directly.
+ */
+export function decideSkipNextOccurrence(
+  existingBooking: { id: string; status: BookingStatus } | null
+): SkipOutcome {
+  if (!existingBooking) {
+    return { action: "advance_only" };
+  }
+  if (existingBooking.status === "pending") {
+    return { action: "cancel_and_advance", bookingId: existingBooking.id };
+  }
+  if (existingBooking.status === "cancelled") {
+    return { action: "advance_only" };
+  }
+  return {
+    action: "rejected",
+    reason: "This occurrence has already progressed past pending — handle that booking directly instead of skipping it.",
+  };
+}
+
 export function isEligibleForRecurringOffer(
   booking: { status: BookingStatus; service_type: ServiceType },
   hasActiveOrPausedSchedule: boolean

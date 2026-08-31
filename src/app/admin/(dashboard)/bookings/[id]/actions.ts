@@ -11,7 +11,7 @@ import {
   serviceQuoteEntrySchema,
   validateQuoteEntryForServiceType,
 } from "@/lib/quote-validation";
-import { buildServiceTypeChangePayload, canChangeServiceType } from "@/lib/service-type";
+import { buildServiceTypeChangePayload, canChangeServiceType, serviceTypeIncludesWashAndFold } from "@/lib/service-type";
 import type { ServiceType } from "@/types/database.types";
 import {
   buildApproveTimePayload,
@@ -21,6 +21,13 @@ import {
   validatePreferredTimeForServiceType,
   validateProposedTime,
 } from "@/lib/time-proposal-validation";
+import {
+  nextDayDeliveryDate,
+  normalizeAddress,
+  normalizePhoneNumber,
+  validateRecurringWindows,
+} from "@/lib/recurring-schedule";
+import { translateToChinese } from "@/lib/translate/translate-to-chinese";
 
 const SERVICE_TYPES = ["wash_and_fold", "dry_cleaning", "both"] as const;
 const serviceTypeSchema = z.enum(SERVICE_TYPES);
@@ -349,6 +356,20 @@ export async function deleteBooking(bookingId: string) {
   const { error } = await supabase.from("bookings").delete().eq("id", bookingId);
 
   if (error) {
+    // recurring_schedules.source_booking_id references this table with no
+    // ON DELETE clause (default RESTRICT) — deliberately preserved so a
+    // booking that established a recurring arrangement can never be
+    // permanently deleted out from under it (see
+    // supabase/migrations/20260830000000_recurring_pickups_v1.sql).
+    // Postgres surfaces that as a foreign_key_violation (23503); catch it
+    // here and explain it in plain terms instead of showing the raw
+    // database error.
+    if (error.code === "23503") {
+      return {
+        error:
+          "This booking can't be deleted — it's the source of a recurring pickup schedule. Cancel that schedule first if it's no longer needed. 无法删除此预约——它是某个定期取件安排的来源预约，如需删除请先取消该定期安排。",
+      };
+    }
     console.error("Delete booking failed:", error);
     return { error: "Something went wrong deleting that booking." };
   }
@@ -356,4 +377,136 @@ export async function deleteBooking(bookingId: string) {
   revalidatePath("/admin/today");
   revalidatePath("/admin/bookings");
   redirect("/admin/bookings");
+}
+
+const recurringEnrollmentSchema = z.object({
+  frequency: z.enum(["weekly", "every_two_weeks"]),
+  firstPickupDate: z.iso.date(),
+  pickupTime: z.string().min(1),
+  deliveryTime: z.string().min(1),
+  recurringInstructions: z.string().trim().max(1000).optional().or(z.literal("")),
+  // Literal true, same trick bookingSchema's smsConsent uses — an
+  // unchecked confirmation must fail validation outright, not just be an
+  // optional preference.
+  consentConfirmed: z.literal(true, { error: "Please confirm the customer's consent first." }),
+});
+
+/**
+ * Creates a new active recurring schedule from a completed booking. Every
+ * value that matters is re-derived or re-validated server-side rather than
+ * trusted from the client — the booking's own current status/service_type
+ * are fetched fresh (never taken from whatever the form happened to have
+ * open), the phone number is normalized here (not accepted pre-normalized
+ * from the client), and the pickup/delivery window pair goes through the
+ * exact same validateRecurringWindows() the pure-logic tests exercise.
+ * Duplicate active/paused schedules are rejected with a friendly message
+ * before ever reaching the database's own
+ * recurring_schedules_active_customer_unique_idx, which remains the real
+ * backstop against a race between two simultaneous enrollment attempts.
+ */
+export async function setUpRecurringSchedule(bookingId: string, input: unknown) {
+  const user = await requireAdmin();
+
+  const parsed = recurringEnrollmentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Please check the recurring schedule details." };
+  }
+
+  const supabase = await createClient();
+  const { data: booking, error: fetchError } = await supabase
+    .from("bookings")
+    .select("name, phone, address, status, service_type")
+    .eq("id", bookingId)
+    .single();
+
+  if (fetchError || !booking) {
+    return { error: "Couldn't find that booking." };
+  }
+
+  if (booking.status !== "completed") {
+    return { error: "Recurring pickup can only be set up from a completed booking." };
+  }
+  if (!serviceTypeIncludesWashAndFold(booking.service_type)) {
+    return { error: "Recurring pickup is only available for orders that included Wash & Fold." };
+  }
+
+  const windowError = validateRecurringWindows({
+    pickupDate: parsed.data.firstPickupDate,
+    pickupTime: parsed.data.pickupTime,
+    deliveryDate: nextDayDeliveryDate(parsed.data.firstPickupDate),
+    deliveryTime: parsed.data.deliveryTime,
+  });
+  if (windowError) {
+    return { error: windowError };
+  }
+
+  const normalizedPhone = normalizePhoneNumber(booking.phone);
+  const normalizedAddress = normalizeAddress(booking.address);
+
+  // A small, indexed-by-phone lookup, not a full scan — address is
+  // compared in JS via the same normalizeAddress() the database's own
+  // partial unique index expression (lower(btrim(address))) uses, since
+  // there's no separate address_normalized column to filter on directly.
+  const { data: candidates, error: lookupError } = await supabase
+    .from("recurring_schedules")
+    .select("address")
+    .eq("customer_phone_normalized", normalizedPhone)
+    .in("status", ["active", "paused"]);
+
+  if (lookupError) {
+    console.error("Recurring schedule duplicate check failed:", lookupError);
+    return { error: "Something went wrong checking for an existing schedule." };
+  }
+
+  if ((candidates ?? []).some((s) => normalizeAddress(s.address) === normalizedAddress)) {
+    return { error: "This customer already has an active or paused recurring schedule." };
+  }
+
+  // Best-effort, same pattern as createBooking()'s special-instructions
+  // translation — a translation hiccup must never block setting up the
+  // schedule, and every future occurrence this schedule generates copies
+  // recurring_instructions_zh straight into its own special_instructions_zh
+  // (see generate_due_recurring_bookings() in the Checkpoint 1 migration).
+  let recurringInstructionsZh: string | null = null;
+  if (parsed.data.recurringInstructions) {
+    try {
+      recurringInstructionsZh = await translateToChinese(parsed.data.recurringInstructions);
+    } catch (translateError) {
+      console.error(`Recurring schedule setup for booking ${bookingId}: translation failed`, translateError);
+    }
+  }
+
+  const { error: insertError } = await supabase.from("recurring_schedules").insert({
+    frequency: parsed.data.frequency,
+    customer_name: booking.name,
+    customer_phone: booking.phone,
+    customer_phone_normalized: normalizedPhone,
+    address: booking.address,
+    pickup_time: parsed.data.pickupTime,
+    delivery_time: parsed.data.deliveryTime,
+    next_pickup_date: parsed.data.firstPickupDate,
+    recurring_instructions: parsed.data.recurringInstructions || null,
+    recurring_instructions_zh: recurringInstructionsZh,
+    source_booking_id: bookingId,
+    recurring_consent_at: new Date().toISOString(),
+    created_by: user.id,
+    updated_by: user.id,
+  });
+
+  if (insertError) {
+    // The pre-check above is best-effort UX, not the real guarantee — two
+    // simultaneous enrollment attempts for the same customer can both pass
+    // it before either has inserted. recurring_schedules_active_customer_
+    // unique_idx is what actually prevents the duplicate row in that race;
+    // a 23505 here means it just did its job.
+    if (insertError.code === "23505") {
+      return { error: "This customer already has an active or paused recurring schedule." };
+    }
+    console.error("Create recurring schedule failed:", insertError);
+    return { error: "Something went wrong setting up the recurring schedule." };
+  }
+
+  revalidateBookingPaths(bookingId);
+  revalidatePath("/admin/recurring");
+  return { error: null };
 }

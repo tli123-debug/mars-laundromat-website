@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 const NAV_LINKS = [
   { href: "/admin/today", label: "Today 今日" },
   { href: "/admin/bookings", label: "All Bookings 所有预约" },
+  { href: "/admin/recurring", label: "Recurring 定期服务" },
 ];
 
 export default async function AdminDashboardLayout({

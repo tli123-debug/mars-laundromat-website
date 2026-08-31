@@ -4,9 +4,11 @@ import {
   bookingPhoneHref,
   bookingPickupConfirmationTextHref,
   bookingQuoteTextHref,
+  bookingRecurringOfferTextHref,
   bookingSmsHref,
   buildPickupConfirmationMessage,
   buildQuoteTextMessage,
+  buildRecurringOfferMessage,
 } from "./booking-links";
 
 describe("bookingPhoneHref", () => {
@@ -207,6 +209,58 @@ describe("bookingPickupConfirmationTextHref", () => {
     const decoded = decodeURIComponent(href.split("?body=")[1]);
     expect(decoded).toContain("9:00 AM–10:00 AM");
     expect(decoded).toContain("Please reply if you have any questions.");
+  });
+});
+
+describe("buildRecurringOfferMessage", () => {
+  it("matches the exact owner-approved wording and line-break structure", () => {
+    const message = buildRecurringOfferMessage("Jane Rivera");
+    expect(message).toBe(
+      "Hi Jane Rivera, this is Mars Laundromat.\n\n" +
+        "Thank you for choosing us. We hope everything came back just the way you wanted.\n\n" +
+        "If you'd like, we can set up a recurring Wash & Fold pickup every week or every two weeks, so you won't need to book each time.\n\n" +
+        "Reply WEEKLY or EVERY 2 WEEKS if you're interested, or let us know if you have any questions."
+    );
+  });
+
+  it("always says Wash & Fold, regardless of what service the source order actually was — the function takes no service-type parameter at all", () => {
+    // There is no serviceType argument to pass a 'both' value into in the
+    // first place — this test documents that omission is deliberate, not
+    // an oversight, per the locked rule that recurring offers are always
+    // Wash & Fold-only wording. Eligibility (including for a completed
+    // Both order) is decided separately by isEligibleForRecurringOffer().
+    expect(buildRecurringOfferMessage.length).toBe(1);
+    expect(buildRecurringOfferMessage("Anyone")).toContain("recurring Wash & Fold pickup");
+    expect(buildRecurringOfferMessage("Anyone")).not.toContain("Both Services");
+  });
+
+  it("the message template itself stays English-only, unlike the bilingual admin-facing button labels", () => {
+    const message = buildRecurringOfferMessage("Jane Rivera");
+    // eslint-disable-next-line no-misleading-character-class
+    expect(message).not.toMatch(/[一-鿿]/);
+  });
+});
+
+describe("bookingRecurringOfferTextHref", () => {
+  it("combines the phone and message into one properly-encoded sms: link", () => {
+    const href = bookingRecurringOfferTextHref("(718) 555-0134", "Jane Rivera");
+    expect(href.startsWith("sms:7185550134?body=")).toBe(true);
+    const decoded = decodeURIComponent(href.split("?body=")[1]);
+    expect(decoded).toBe(buildRecurringOfferMessage("Jane Rivera"));
+  });
+
+  it("round-trips through encode/decode without corrupting punctuation, apostrophes, or line breaks", () => {
+    const href = bookingRecurringOfferTextHref("7185550134", "Jane Rivera");
+    const decoded = decodeURIComponent(href.split("?body=")[1]);
+    expect(decoded).toContain("If you'd like, we can set up a recurring Wash & Fold pickup every week or every two weeks, so you won't need to book each time.");
+    expect(decoded).toContain("Reply WEEKLY or EVERY 2 WEEKS if you're interested, or let us know if you have any questions.");
+    expect(decoded.split("\n\n")).toHaveLength(4);
+  });
+
+  it("never marks anything as sent — this is a plain sms: link with no side effect of its own", () => {
+    const href = bookingRecurringOfferTextHref("7185550134", "Jane Rivera");
+    expect(href.startsWith("sms:")).toBe(true);
+    expect(href).not.toContain("sent=");
   });
 });
 

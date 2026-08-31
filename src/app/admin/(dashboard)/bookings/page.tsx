@@ -13,9 +13,20 @@ import { windowLabel } from "@/lib/validations/booking-schema";
 import { StatusSelect } from "./status-select";
 import { PaymentControl } from "./payment-control";
 import { ServiceTypeBadge } from "./service-type-badge";
+import { RecurringBadge } from "./recurring-badge";
 import { BookingsFilters } from "./bookings-filters";
 import { isDateRangeOption, getDateRange, type DateRangeOption } from "./date-range";
 import { isBookingView, statusesForView, type BookingView } from "./view-filter";
+import type { Database } from "@/types/database.types";
+
+// Includes the embedded recurring_schedules relation — see the same
+// .returns<>() comment in today/page.tsx.
+type BookingRow = Database["public"]["Tables"]["bookings"]["Row"] & {
+  recurring_schedules: Pick<
+    Database["public"]["Tables"]["recurring_schedules"]["Row"],
+    "status" | "frequency"
+  > | null;
+};
 
 function formatDate(dateStr: string | null) {
   if (!dateStr) return null;
@@ -42,9 +53,12 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
 
   const supabase = await createClient();
 
+  // recurring_schedules!bookings_recurring_schedule_id_fkey disambiguates
+  // the embed direction (see the same comment in bookings/[id]/page.tsx) —
+  // one query for the whole list, not one per row.
   let bookingsQuery = supabase
     .from("bookings")
-    .select("*")
+    .select("*, recurring_schedules!bookings_recurring_schedule_id_fkey(status, frequency)")
     .order("created_at", { ascending: false });
 
   const statuses = statusesForView(view);
@@ -55,7 +69,7 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
   if (end) bookingsQuery = bookingsQuery.lt("created_at", end.toISOString());
 
   const [{ data: rows, error }, { data: allForCounts }] = await Promise.all([
-    bookingsQuery,
+    bookingsQuery.returns<BookingRow[]>(),
     supabase.from("bookings").select("status, created_at"),
   ]);
 
@@ -141,6 +155,12 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
                       {booking.name}
                     </Link>
                     <ServiceTypeBadge serviceType={booking.service_type} />
+                    {booking.recurring_schedules && (
+                      <RecurringBadge
+                        status={booking.recurring_schedules.status}
+                        frequency={booking.recurring_schedules.frequency}
+                      />
+                    )}
                   </div>
                   <div className="text-sm text-muted-foreground">{booking.phone}</div>
                   <div className="text-sm text-muted-foreground">{booking.address}</div>

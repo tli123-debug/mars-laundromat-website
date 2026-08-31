@@ -5,7 +5,16 @@ import { getBrooklynToday } from "@/lib/booking-hours";
 import { BookingCard } from "./booking-card";
 import type { Database } from "@/types/database.types";
 
-type BookingRow = Database["public"]["Tables"]["bookings"]["Row"];
+// Includes the embedded recurring_schedules relation — the hand-written
+// Database type doesn't give supabase-js enough to infer an embed's shape
+// from the select string alone, so the query below asserts this shape
+// explicitly via .returns<>() rather than relying on inference.
+type BookingRow = Database["public"]["Tables"]["bookings"]["Row"] & {
+  recurring_schedules: Pick<
+    Database["public"]["Tables"]["recurring_schedules"]["Row"],
+    "status" | "frequency"
+  > | null;
+};
 
 const COLUMNS: { key: BookingColumn; label: string }[] = [
   { key: "pending_review", label: "Pending Review 待处理" },
@@ -33,11 +42,14 @@ export default async function AdminTodayPage() {
   // Everything Active is fetched regardless of date — overdue/missed
   // bookings from any day still need to surface (categorizeBooking uses
   // <=, not =, for exactly this reason).
+  // recurring_schedules!bookings_recurring_schedule_id_fkey disambiguates
+  // the embed direction (see the same comment in bookings/[id]/page.tsx).
   const { data: rows, error } = await supabase
     .from("bookings")
-    .select("*")
+    .select("*, recurring_schedules!bookings_recurring_schedule_id_fkey(status, frequency)")
     .in("status", ACTIVE_BOOKING_STATUSES)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .returns<BookingRow[]>();
 
   if (error) {
     return (
