@@ -264,35 +264,61 @@ begin
     -- its advanced-but-not-yet-due date and is revisited on a later day's
     -- invocation — never generated early.
     if v_target_date <= p_as_of_date + 2 then
-      begin
-        insert into public.bookings (
-          name, phone, address,
-          preferred_pickup_date, preferred_pickup_time,
-          preferred_delivery_date, preferred_delivery_time,
-          status, booking_source, service_type, service_speed,
-          paid, quote_status,
-          sms_consent, sms_consent_at,
-          special_instructions,
-          recurring_schedule_id, recurring_occurrence_date,
-          created_by, updated_by
-        )
-        values (
-          v_schedule.customer_name, v_schedule.customer_phone, v_schedule.address,
-          v_target_date, v_schedule.pickup_time,
-          v_target_date + 1, v_schedule.delivery_time,
-          'pending', 'recurring', 'wash_and_fold', 'standard',
-          false, 'not_started',
-          true, v_schedule.recurring_consent_at,
-          v_schedule.recurring_instructions,
-          v_schedule.id, v_target_date,
-          v_schedule.created_by, v_schedule.created_by
-        )
-        returning id into v_new_booking_id;
+      -- ON CONFLICT targeted specifically at
+      -- bookings_recurring_schedule_occurrence_unique_idx (the exact
+      -- column list + partial predicate below is what makes Postgres
+      -- infer that one specific index, not any other unique constraint
+      -- this table might ever gain) — deliberately not a broad
+      -- `exception when unique_violation`, which would have silently
+      -- treated ANY unique-constraint failure on this table as "already
+      -- generated" and advanced the schedule anyway, masking a real
+      -- problem instead of surfacing it. Any other error on this insert
+      -- (a genuinely unrelated constraint violation, for instance) is not
+      -- caught here at all and propagates normally, aborting this
+      -- schedule's iteration loudly rather than silently skipping a
+      -- customer's booking.
+      insert into public.bookings (
+        name, phone, address,
+        preferred_pickup_date, preferred_pickup_time,
+        preferred_delivery_date, preferred_delivery_time,
+        status, booking_source, service_type, service_speed,
+        contact_preference,
+        paid, quote_status,
+        sms_consent, sms_consent_at,
+        special_instructions, special_instructions_zh,
+        recurring_schedule_id, recurring_occurrence_date,
+        created_by, updated_by
+      )
+      values (
+        v_schedule.customer_name, v_schedule.customer_phone, v_schedule.address,
+        v_target_date, v_schedule.pickup_time,
+        v_target_date + 1, v_schedule.delivery_time,
+        'pending', 'recurring', 'wash_and_fold', 'standard',
+        -- This recurring workflow is established and managed entirely
+        -- through assisted text messages, unlike a phone-in booking
+        -- (which defaults to 'call') — so this is explicit, not left to
+        -- the column default.
+        'text',
+        false, 'not_started',
+        true, v_schedule.recurring_consent_at,
+        v_schedule.recurring_instructions, v_schedule.recurring_instructions_zh,
+        v_schedule.id, v_target_date,
+        v_schedule.created_by, v_schedule.created_by
+      )
+      on conflict (recurring_schedule_id, recurring_occurrence_date)
+        where recurring_schedule_id is not null
+        do nothing
+      returning id into v_new_booking_id;
 
+      if v_new_booking_id is not null then
         v_action := 'generated';
-      exception when unique_violation then
-        -- bookings_recurring_schedule_occurrence_unique_idx already
-        -- covers this date: a concurrent invocation, or a re-run after a
+      else
+        -- The only way this insert can return zero rows is the ON
+        -- CONFLICT DO NOTHING above actually firing: every column here is
+        -- provided and satisfies its own NOT NULL/CHECK constraints
+        -- regardless of any other row's data, so no other failure mode
+        -- silently yields zero rows this way. That means this occurrence
+        -- already exists — a concurrent invocation, or a re-run after a
         -- prior partial failure, already generated it. Treat this as an
         -- idempotently-already-done outcome, not an error — surface which
         -- booking it is and still advance the schedule below, exactly as
@@ -303,7 +329,7 @@ begin
           and b.recurring_occurrence_date = v_target_date;
 
         v_action := 'already_generated';
-      end;
+      end if;
 
       -- Advance past the occurrence just generated (or confirmed
       -- already-generated) so the next invocation looks at the following
