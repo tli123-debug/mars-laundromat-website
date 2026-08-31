@@ -4,8 +4,10 @@
  * 20260820000000_add_paid_to_bookings.sql,
  * 20260821000000_add_special_instructions_zh_to_bookings.sql,
  * 20260822000000_pickup_delivery_v1.sql,
- * 20260826000000_dry_cleaning_expansion.sql, and
- * 20260827000000_status_simplification_and_delete_policy.sql.
+ * 20260826000000_dry_cleaning_expansion.sql,
+ * 20260827000000_status_simplification_and_delete_policy.sql,
+ * 20260828000000_same_day_fee_reduction.sql, and
+ * 20260830000000_recurring_pickups_v1.sql.
  * If the schema changes, update this alongside the migration (or regenerate via
  * `npx supabase gen types typescript --linked --schema public` once the project is CLI-linked).
  */
@@ -18,7 +20,10 @@ export type BookingStatus =
   | "completed"
   | "cancelled";
 
-export type BookingSource = "website" | "phone";
+// 'recurring' is system-generated only — an anon website submission's RLS
+// policy still requires booking_source = 'website'; only
+// generate_due_recurring_bookings() ever writes 'recurring'.
+export type BookingSource = "website" | "phone" | "recurring";
 export type ContactPreference = "text" | "call";
 // 'dry_cleaning_timeline' is not a customer-chosen speed tier like the
 // other three — every dry_cleaning/both booking is normalized to it
@@ -29,6 +34,8 @@ export type ServiceSpeed = "standard" | "flexible" | "same_day" | "dry_cleaning_
 export type ServiceType = "wash_and_fold" | "dry_cleaning" | "both";
 export type QuoteStatus = "not_started" | "draft" | "sent";
 export type PaymentMethod = "cash" | "zelle";
+export type RecurringScheduleStatus = "active" | "paused" | "cancelled";
+export type RecurringFrequency = "weekly" | "every_two_weeks";
 
 export interface Database {
   public: {
@@ -87,6 +94,11 @@ export interface Database {
           // column. See buildServiceQuoteUpdatePayload() in quote-validation.ts.
           dry_cleaning_effective_charge_cents: number | null;
           dry_cleaning_notes: string | null;
+          // Both null (an ordinary booking) or both set (a recurring
+          // occurrence) — never one without the other, enforced by
+          // bookings_recurring_fields_check.
+          recurring_schedule_id: string | null;
+          recurring_occurrence_date: string | null;
         };
         Insert: {
           id?: string;
@@ -132,6 +144,8 @@ export interface Database {
           dry_cleaning_item_subtotal_cents?: number | null;
           dry_cleaning_effective_charge_cents?: number | null;
           dry_cleaning_notes?: string | null;
+          recurring_schedule_id?: string | null;
+          recurring_occurrence_date?: string | null;
         };
         Update: {
           id?: string;
@@ -177,6 +191,8 @@ export interface Database {
           dry_cleaning_item_subtotal_cents?: number | null;
           dry_cleaning_effective_charge_cents?: number | null;
           dry_cleaning_notes?: string | null;
+          recurring_schedule_id?: string | null;
+          recurring_occurrence_date?: string | null;
         };
         // created_by/updated_by/payment_verified_by reference auth.users, not a
         // public-schema table — included for parity with what the Supabase CLI
@@ -201,6 +217,110 @@ export interface Database {
           {
             foreignKeyName: "bookings_payment_verified_by_fkey";
             columns: ["payment_verified_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "bookings_recurring_schedule_id_fkey";
+            columns: ["recurring_schedule_id"];
+            isOneToOne: false;
+            referencedRelation: "recurring_schedules";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      recurring_schedules: {
+        Row: {
+          id: string;
+          created_at: string;
+          updated_at: string;
+          status: RecurringScheduleStatus;
+          frequency: RecurringFrequency;
+          customer_name: string;
+          customer_phone: string;
+          customer_phone_normalized: string;
+          address: string;
+          pickup_time: string;
+          delivery_time: string;
+          next_pickup_date: string;
+          recurring_instructions: string | null;
+          recurring_instructions_zh: string | null;
+          source_booking_id: string;
+          recurring_consent_at: string;
+          created_by: string;
+          updated_by: string;
+          paused_at: string | null;
+          cancelled_at: string | null;
+          last_generated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          status?: RecurringScheduleStatus;
+          frequency: RecurringFrequency;
+          customer_name: string;
+          customer_phone: string;
+          customer_phone_normalized: string;
+          address: string;
+          pickup_time: string;
+          delivery_time: string;
+          next_pickup_date: string;
+          recurring_instructions?: string | null;
+          recurring_instructions_zh?: string | null;
+          source_booking_id: string;
+          recurring_consent_at: string;
+          created_by: string;
+          updated_by: string;
+          paused_at?: string | null;
+          cancelled_at?: string | null;
+          last_generated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          status?: RecurringScheduleStatus;
+          frequency?: RecurringFrequency;
+          customer_name?: string;
+          customer_phone?: string;
+          customer_phone_normalized?: string;
+          address?: string;
+          pickup_time?: string;
+          delivery_time?: string;
+          next_pickup_date?: string;
+          recurring_instructions?: string | null;
+          recurring_instructions_zh?: string | null;
+          source_booking_id?: string;
+          recurring_consent_at?: string;
+          created_by?: string;
+          updated_by?: string;
+          paused_at?: string | null;
+          cancelled_at?: string | null;
+          last_generated_at?: string | null;
+        };
+        // created_by/updated_by reference auth.users, same cross-schema
+        // caveat as bookings' own created_by/updated_by above — read as
+        // plain uuid columns, never relationally embedded.
+        Relationships: [
+          {
+            foreignKeyName: "recurring_schedules_source_booking_id_fkey";
+            columns: ["source_booking_id"];
+            isOneToOne: false;
+            referencedRelation: "bookings";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recurring_schedules_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recurring_schedules_updated_by_fkey";
+            columns: ["updated_by"];
             isOneToOne: false;
             referencedRelation: "users";
             referencedColumns: ["id"];
