@@ -165,12 +165,13 @@ export function ScheduleCard({ schedule }: { schedule: ScheduleRow }) {
               <AlertDialogHeader>
                 <AlertDialogTitle>Skip the next occurrence? 跳过下次取件？</AlertDialogTitle>
                 <AlertDialogDescription>
-                  If the next pickup hasn&apos;t been generated yet, this just moves the schedule forward to
-                  the following occurrence. If it has already been generated and is still pending, that
-                  booking will be cancelled (not deleted) and the schedule will advance. If it has already
-                  progressed further (confirmed, picked up, etc.), this will be rejected — handle that
-                  booking directly instead.
-                  如果下次取件尚未生成，此操作只会将安排推进到下一次。如果已生成且仍为待处理状态，该预约将被取消（不会删除），安排随之推进。如果已进一步处理（已确认、已取件等），此操作将被拒绝，请直接处理该预约。
+                  If the next pickup hasn&apos;t been generated yet, this moves the schedule forward to the
+                  following occurrence. If it has already been generated and is still pending, that booking
+                  will be cancelled (not deleted) — the schedule&apos;s date was already advanced past it
+                  when that booking was created, so it doesn&apos;t move again. If it has already progressed
+                  further (confirmed, picked up, etc.), this will be rejected — handle that booking directly
+                  instead.
+                  如果下次取件尚未生成，此操作会将安排推进到下一次。如果已生成且仍为待处理状态，该预约将被取消（不会删除）——安排日期在生成该预约时已经推进过，因此不会再次推进。如果已进一步处理（已确认、已取件等），此操作将被拒绝，请直接处理该预约。
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter className="gap-3">

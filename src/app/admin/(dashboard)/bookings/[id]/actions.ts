@@ -365,9 +365,13 @@ export async function deleteBooking(bookingId: string) {
     // here and explain it in plain terms instead of showing the raw
     // database error.
     if (error.code === "23503") {
+      // Cancelling the schedule does NOT clear source_booking_id, so it
+      // stays protected even after cancellation — there is no action that
+      // frees this booking up for deletion short of the schedule record
+      // itself being removed, which this app has no feature for.
       return {
         error:
-          "This booking can't be deleted — it's the source of a recurring pickup schedule. Cancel that schedule first if it's no longer needed. 无法删除此预约——它是某个定期取件安排的来源预约，如需删除请先取消该定期安排。",
+          "This booking can't be deleted — it established a recurring pickup schedule and must remain as that schedule's source and consent record. It stays protected for as long as the schedule record exists, even after the schedule is cancelled. 无法删除此预约——它是某个定期取件安排的来源及同意记录，只要该安排记录存在，此预约就会受到保护，即使该安排已被取消也是如此。",
       };
     }
     console.error("Delete booking failed:", error);

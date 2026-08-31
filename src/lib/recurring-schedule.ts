@@ -183,6 +183,136 @@ export function recurringBadgeKind(
 }
 
 /**
+ * Resume's own version of catching up a stale next_pickup_date. First
+ * applies the same date-only stale-catchup advanceToDueDate() does, then
+ * additionally checks whether the RESULT lands on today with a pickup
+ * window that has already started or passed in Brooklyn time — e.g.
+ * resuming a 9:00-10:00 AM schedule at 5:00 PM today. If so, advances one
+ * more cadence step, since that window can no longer actually happen
+ * today. A genuine future date is returned untouched (the window check
+ * only ever applies to today), and a window that's still upcoming later
+ * today is left alone — "a currently available window today may remain
+ * today." Reuses getWindowsForDate()'s own excludePast filtering (the
+ * exact same logic the public form and every other window check in this
+ * app already relies on) rather than re-deriving minute arithmetic here.
+ */
+export function advanceToNextAvailablePickup(
+  date: string,
+  frequency: RecurringFrequency,
+  pickupTime: string,
+  now: Date = new Date()
+): string {
+  const today = getBrooklynToday(now);
+  const dateCaughtUp = advanceToDueDate(date, frequency, today);
+
+  if (dateCaughtUp !== today) {
+    return dateCaughtUp;
+  }
+
+  const normalizedPickupTime = normalizeStoredTime(pickupTime);
+  const stillAvailableToday =
+    normalizedPickupTime !== null &&
+    getWindowsForDate(today, { now }).some((w) => w.value === normalizedPickupTime);
+
+  return stillAvailableToday ? dateCaughtUp : advanceByCadence(dateCaughtUp, frequency);
+}
+
+/**
+ * The exact, unconditional update payload for cancelling a schedule —
+ * unconditional on purpose, matching buildServiceTypeChangePayload()'s
+ * pattern in service-type.ts: the Server Action's own status check is the
+ * gate, this just builds what to write once it's decided to proceed.
+ * paused_at is explicitly nulled regardless of whether the schedule was
+ * active or paused beforehand — recurring_schedules_status_timestamps_check
+ * requires (status = 'paused') = (paused_at is not null), so a schedule
+ * cancelled FROM paused would otherwise still carry a non-null paused_at
+ * and be rejected by that constraint. `now` is injectable for deterministic
+ * tests, matching every other "now"-dependent function in this codebase.
+ */
+export function buildCancelSchedulePayload(userId: string, now: Date = new Date()) {
+  return {
+    status: "cancelled" as const,
+    cancelled_at: now.toISOString(),
+    paused_at: null,
+    updated_by: userId,
+  };
+}
+
+/**
+ * The three possible outcomes of Skip Next, given the earliest still-due,
+ * non-cancelled generated booking (if any) for the schedule — see
+ * decideSkipNextOccurrence()'s own doc comment for what "still-due" means
+ * and why occurrenceDate can equal, but never exceed, nextPickupDate.
+ */
+export type SkipOutcome =
+  | { action: "advance_only" }
+  | { action: "cancel_only"; bookingId: string }
+  | { action: "cancel_and_advance"; bookingId: string }
+  | { action: "rejected"; reason: string };
+
+export interface UpcomingRecurringBooking {
+  id: string;
+  status: BookingStatus;
+  occurrenceDate: string;
+}
+
+/**
+ * Pure decision logic for Skip Next, separated from its Server Action
+ * (skipNextOccurrence in src/app/admin/(dashboard)/recurring/actions.ts)
+ * so every outcome is independently testable without a database.
+ *
+ * The critical fact this depends on: generate_due_recurring_bookings()
+ * (the SQL generator) advances next_pickup_date to the FOLLOWING
+ * occurrence the instant it creates a booking — so by the time a booking
+ * actually exists, nextPickupDate no longer points at it, it points PAST
+ * it. The Server Action is responsible for finding that booking (the
+ * earliest non-cancelled generated booking dated today-or-later and no
+ * later than nextPickupDate) and passing it here; this function only
+ * decides what to do once it's found:
+ *
+ * - No such booking: nothing has been generated yet for the upcoming
+ *   occurrence — just advance nextPickupDate by one cadence step.
+ * - Found, status 'pending', dated STRICTLY BEFORE nextPickupDate (the
+ *   normal case — the generator already advanced the pointer past it):
+ *   cancel the booking only. The pointer already reflects "next
+ *   occurrence after this one," so it must NOT be advanced again.
+ * - Found, status 'pending', dated EXACTLY EQUAL to nextPickupDate (a
+ *   defensive edge case — the pointer has NOT yet been advanced past
+ *   this occurrence, which shouldn't normally happen but is handled
+ *   anyway): cancel the booking AND advance the pointer, since nothing
+ *   else already did.
+ * - Found, any other status (confirmed, picked_up, ready_for_delivery,
+ *   completed — "progressed beyond pending"): reject outright. Skip Next
+ *   never overrides real, in-progress work.
+ *
+ * A booking whose status is already 'cancelled' is never passed in here
+ * at all — the Server Action's own lookup excludes it, since an
+ * already-cancelled occurrence has, by definition, already been skipped;
+ * that case surfaces as "no such booking" (advance_only) instead.
+ */
+export function decideSkipNextOccurrence(
+  nextPickupDate: string,
+  upcomingBooking: UpcomingRecurringBooking | null
+): SkipOutcome {
+  if (!upcomingBooking) {
+    return { action: "advance_only" };
+  }
+  if (upcomingBooking.status !== "pending") {
+    return {
+      action: "rejected",
+      reason: "This occurrence has already progressed past pending — handle that booking directly instead of skipping it.",
+    };
+  }
+  if (upcomingBooking.occurrenceDate < nextPickupDate) {
+    return { action: "cancel_only", bookingId: upcomingBooking.id };
+  }
+  // occurrenceDate === nextPickupDate — the caller's query never returns
+  // a later date (it's bounded by nextPickupDate), and never an earlier
+  // one that isn't < (there is no other case left).
+  return { action: "cancel_and_advance", bookingId: upcomingBooking.id };
+}
+
+/**
  * Whether a completed booking may be offered recurring Wash & Fold —
  * "Text Thank You & Recurring Offer" should only ever appear when all
  * three hold: the booking has actually finished (status completed), it
@@ -194,50 +324,6 @@ export function recurringBadgeKind(
  * phone + normalized address happens in the Server Action that calls this
  * (Checkpoint 2), which then passes in a plain boolean.
  */
-/** The three possible outcomes of Skip Next, given whatever booking (if any) already exists for the occurrence being skipped. */
-export type SkipOutcome =
-  | { action: "advance_only" }
-  | { action: "cancel_and_advance"; bookingId: string }
-  | { action: "rejected"; reason: string };
-
-/**
- * Pure decision logic for Skip Next, separated from setUpRecurringSchedule's
- * sibling Server Action (skipNextOccurrence in
- * src/app/admin/(dashboard)/recurring/actions.ts) so the three distinct
- * outcomes are independently testable without a database:
- *
- * - No booking generated yet for this occurrence: just advance the
- *   schedule — there's nothing else to touch.
- * - A generated booking still pending: cancel it (status change only,
- *   never delete) and advance the schedule.
- * - A generated booking already cancelled (by hand, before Skip Next was
- *   clicked): treat "this occurrence won't happen" as already satisfied —
- *   advance without re-cancelling. Not literally named in the "still
- *   pending" trigger condition, but consistent with Skip Next's actual
- *   intent.
- * - A generated booking that's progressed further (confirmed, picked up,
- *   ready for delivery, or completed): reject outright. Skip Next never
- *   overrides real, in-progress work — staff must handle that booking
- *   directly.
- */
-export function decideSkipNextOccurrence(
-  existingBooking: { id: string; status: BookingStatus } | null
-): SkipOutcome {
-  if (!existingBooking) {
-    return { action: "advance_only" };
-  }
-  if (existingBooking.status === "pending") {
-    return { action: "cancel_and_advance", bookingId: existingBooking.id };
-  }
-  if (existingBooking.status === "cancelled") {
-    return { action: "advance_only" };
-  }
-  return {
-    action: "rejected",
-    reason: "This occurrence has already progressed past pending — handle that booking directly instead of skipping it.",
-  };
-}
-
 export function isEligibleForRecurringOffer(
   booking: { status: BookingStatus; service_type: ServiceType },
   hasActiveOrPausedSchedule: boolean

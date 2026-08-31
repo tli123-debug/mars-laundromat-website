@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   advanceByCadence,
   advanceToDueDate,
+  advanceToNextAvailablePickup,
+  buildCancelSchedulePayload,
   cadenceDays,
   decideSkipNextOccurrence,
   isEligibleForRecurringOffer,
@@ -85,6 +87,50 @@ describe("advanceToDueDate — stale-date advancement without backfilling histor
 
   it("landing exactly on asOfDate counts as due, not stale", () => {
     expect(advanceToDueDate("2026-09-07", "weekly", "2026-09-14")).toBe("2026-09-14");
+  });
+});
+
+describe("advanceToNextAvailablePickup — Resume must not reactivate an elapsed pickup window", () => {
+  it("a genuine future date is returned untouched, regardless of pickup time or now", () => {
+    const now = new Date("2026-09-14T14:00:00Z"); // 10:00 AM EDT
+    expect(advanceToNextAvailablePickup("2026-09-21", "weekly", "09:00", now)).toBe("2026-09-21");
+  });
+
+  it("today with the window still upcoming (before it starts) stays today", () => {
+    const now = new Date("2026-09-14T12:00:00Z"); // 8:00 AM EDT — before the 9:00 AM window
+    expect(advanceToNextAvailablePickup("2026-09-14", "weekly", "09:00", now)).toBe("2026-09-14");
+  });
+
+  it("the owner's exact example: resuming a 9:00-10:00 AM schedule at 5:00 PM today advances one cadence step", () => {
+    const now = new Date("2026-09-14T21:00:00Z"); // 5:00 PM EDT
+    expect(advanceToNextAvailablePickup("2026-09-14", "weekly", "09:00", now)).toBe("2026-09-21");
+  });
+
+  it("boundary: now exactly at the window's start minute counts as already started (matches getWindowsForDate's own <= boundary)", () => {
+    const now = new Date("2026-09-14T13:00:00Z"); // 9:00 AM EDT exactly
+    expect(advanceToNextAvailablePickup("2026-09-14", "weekly", "09:00", now)).toBe("2026-09-21");
+  });
+
+  it("a genuinely stale (past) date is first caught up by date, then advanced again if that lands on today with an elapsed window", () => {
+    const now = new Date("2026-09-14T21:00:00Z"); // 5:00 PM EDT, Brooklyn-today = 2026-09-14
+    // 2026-08-31 -> +7 -> 2026-09-07 -> +7 -> 2026-09-14 (today), which then
+    // fails the elapsed-window check at 5 PM and advances once more.
+    expect(advanceToNextAvailablePickup("2026-08-31", "weekly", "09:00", now)).toBe("2026-09-21");
+  });
+
+  it("works the same way for every_two_weeks", () => {
+    const now = new Date("2026-09-14T21:00:00Z"); // 5:00 PM EDT
+    expect(advanceToNextAvailablePickup("2026-09-14", "every_two_weeks", "09:00", now)).toBe("2026-09-28");
+  });
+
+  it("a later window (e.g. 6:00-7:00 PM) can still be available even late in the day", () => {
+    const now = new Date("2026-09-14T21:00:00Z"); // 5:00 PM EDT — before the 6:00 PM window
+    expect(advanceToNextAvailablePickup("2026-09-14", "weekly", "18:00", now)).toBe("2026-09-14");
+  });
+
+  it("accepts a stored HH:MM:SS pickup time exactly like HH:MM", () => {
+    const now = new Date("2026-09-14T21:00:00Z"); // 5:00 PM EDT
+    expect(advanceToNextAvailablePickup("2026-09-14", "weekly", "09:00:00", now)).toBe("2026-09-21");
   });
 });
 
@@ -255,25 +301,102 @@ describe("RECURRING_BADGE_LABELS / recurringBadgeKind", () => {
 });
 
 describe("decideSkipNextOccurrence", () => {
-  it("skip-before-generation: no booking exists yet -> just advance", () => {
-    expect(decideSkipNextOccurrence(null)).toEqual({ action: "advance_only" });
+  // Matches the owner's own worked example exactly: a weekly schedule
+  // whose pointer has already been advanced (by the generator, when it
+  // created the Sep 7 booking) to Sep 14.
+  const POINTER = "2026-09-14";
+  const GENERATED_DATE = "2026-09-07";
+  const ADVANCED_POINTER = "2026-09-21";
+
+  it("Pointer Sep 14 + pending generated Sep 7 => cancel Sep 7, keep pointer Sep 14 (cancel_only, no re-advance)", () => {
+    const result = decideSkipNextOccurrence(POINTER, {
+      id: "booking-1",
+      status: "pending",
+      occurrenceDate: GENERATED_DATE,
+    });
+    expect(result).toEqual({ action: "cancel_only", bookingId: "booking-1" });
   });
 
-  it("skip of a pending generated booking -> cancel it and advance", () => {
-    const result = decideSkipNextOccurrence({ id: "booking-1", status: "pending" });
+  it("Pointer Sep 14 + confirmed generated Sep 7 => reject, nothing altered", () => {
+    const result = decideSkipNextOccurrence(POINTER, {
+      id: "booking-1",
+      status: "confirmed",
+      occurrenceDate: GENERATED_DATE,
+    });
+    expect(result.action).toBe("rejected");
+  });
+
+  it("rejects every other progressed status the same way", () => {
+    for (const status of ["picked_up", "ready_for_delivery", "completed"] as const) {
+      const result = decideSkipNextOccurrence(POINTER, {
+        id: "booking-1",
+        status,
+        occurrenceDate: GENERATED_DATE,
+      });
+      expect(result.action).toBe("rejected");
+    }
+  });
+
+  it("Pointer Sep 14 + no upcoming generated booking => advance pointer to Sep 21", () => {
+    expect(decideSkipNextOccurrence(POINTER, null)).toEqual({ action: "advance_only" });
+  });
+
+  it("Pointer Sep 14 + already-cancelled Sep 7 => advance pointer to Sep 21 (caller excludes cancelled rows, surfacing as null)", () => {
+    // The Server Action's own lookup filters out status='cancelled'
+    // before ever calling this function — an already-cancelled occurrence
+    // is indistinguishable from "nothing generated yet" by the time it
+    // reaches here, which is exactly the point: both advance_only.
+    expect(decideSkipNextOccurrence(POINTER, null)).toEqual({ action: "advance_only" });
+  });
+
+  it("Defensive: pointer Sep 14 + pending generated Sep 14 (occurrenceDate equals nextPickupDate) => cancel it AND advance to Sep 21", () => {
+    const result = decideSkipNextOccurrence(POINTER, {
+      id: "booking-1",
+      status: "pending",
+      occurrenceDate: POINTER,
+    });
     expect(result).toEqual({ action: "cancel_and_advance", bookingId: "booking-1" });
   });
 
-  it("an already-cancelled generated booking -> just advance, without re-cancelling", () => {
-    const result = decideSkipNextOccurrence({ id: "booking-1", status: "cancelled" });
-    expect(result).toEqual({ action: "advance_only" });
+  it("advance_only and cancel_and_advance both actually advance the pointer by one cadence step when applied", () => {
+    // Documents what the Server Action does with these two outcomes —
+    // decideSkipNextOccurrence itself never touches dates, it only
+    // signals which action to take.
+    expect(advanceByCadence(POINTER, "weekly")).toBe(ADVANCED_POINTER);
+  });
+});
+
+describe("buildCancelSchedulePayload", () => {
+  const NOW = new Date("2026-09-14T18:00:00Z");
+
+  it("sets status cancelled, a real cancelled_at, and explicitly nulls paused_at", () => {
+    const payload = buildCancelSchedulePayload("user-123", NOW);
+    expect(payload).toEqual({
+      status: "cancelled",
+      cancelled_at: NOW.toISOString(),
+      paused_at: null,
+      updated_by: "user-123",
+    });
   });
 
-  it("rejects when the generated booking has progressed past pending", () => {
-    for (const status of ["confirmed", "picked_up", "ready_for_delivery", "completed"] as const) {
-      const result = decideSkipNextOccurrence({ id: "booking-1", status });
-      expect(result.action).toBe("rejected");
-    }
+  it("produces a constraint-compatible payload when cancelling from active (cancelled_at set, paused_at already null so no conflict)", () => {
+    const payload = buildCancelSchedulePayload("user-123", NOW);
+    // recurring_schedules_status_timestamps_check: (status='cancelled') = (cancelled_at is not null)
+    expect(payload.status).toBe("cancelled");
+    expect(payload.cancelled_at).not.toBeNull();
+  });
+
+  it("produces a constraint-compatible payload when cancelling from paused — paused_at is explicitly cleared, not left stale", () => {
+    const payload = buildCancelSchedulePayload("user-123", NOW);
+    // The same unconditional payload is used regardless of the prior
+    // status — this is what actually makes cancelling FROM paused safe:
+    // (status='paused') = (paused_at is not null) would otherwise reject
+    // a cancelled row that still carried a non-null paused_at from before.
+    expect(payload.paused_at).toBeNull();
+  });
+
+  it("is unconditional — the same shape every time, regardless of prior schedule state", () => {
+    expect(buildCancelSchedulePayload("user-a", NOW)).toEqual(buildCancelSchedulePayload("user-a", NOW));
   });
 });
 
