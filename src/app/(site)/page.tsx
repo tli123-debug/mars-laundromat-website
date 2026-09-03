@@ -61,7 +61,19 @@ export default function HomePage() {
               href={service.href}
               className="group rounded-2xl border border-border bg-background p-7 transition-colors hover:border-primary/40 hover:bg-muted"
             >
-              <h3 className="font-display text-xl font-semibold">{service.title}</h3>
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
+                {/* Decorative only — each card already has a visible title
+                    right below, so an empty alt avoids a redundant
+                    screen-reader announcement. */}
+                <img
+                  src={service.icon}
+                  alt=""
+                  width={40}
+                  height={40}
+                  className="h-10 w-10 object-contain"
+                />
+              </div>
+              <h3 className="mt-4 font-display text-xl font-semibold">{service.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {service.description}
               </p>
