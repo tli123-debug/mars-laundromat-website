@@ -178,6 +178,18 @@ describe("earliestStandardFlexibleDelivery / getStandardFlexibleDeliveryWindows 
   const PICKUP_DATE = "2026-09-02"; // Wed
   const NEXT_DAY = "2026-09-03"; // Thu
   const PLUS_TWO = "2026-09-04"; // Fri
+  // Pinned safely outside this block's own date range and passed to every
+  // getStandardFlexibleDeliveryWindows() call below — that function's
+  // internal getWindowsForDate() call applies a real-time "exclude
+  // already-started windows" filter whenever its date argument equals
+  // real Brooklyn-today, which NEXT_DAY eventually does once wall-clock
+  // time reaches it, making these results depend on what time of day the
+  // suite happens to run. Same lesson already learned once — see the
+  // "the schedule is identical every day of the week" test above.
+  // earliestStandardFlexibleDelivery() itself takes no `now` and needs
+  // none: it's pure pickupDate/pickupTime arithmetic with no real-time
+  // dependency at all.
+  const NOW = new Date("2026-12-01T12:00:00Z");
 
   it("a 6:00-7:00 PM pickup pushes the threshold to 5:00 PM the next day, not 4:00 PM", () => {
     const threshold = earliestStandardFlexibleDelivery(PICKUP_DATE, "18:00");
@@ -185,32 +197,32 @@ describe("earliestStandardFlexibleDelivery / getStandardFlexibleDeliveryWindows 
   });
 
   it("rejects 4:00-5:00 PM the next day after a 6:00-7:00 PM pickup", () => {
-    const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "18:00", NEXT_DAY);
+    const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "18:00", NEXT_DAY, { now: NOW });
     expect(windows.map((w) => w.value)).not.toContain("16:00");
   });
 
   it("accepts 5:00-6:00 PM the next day after a 6:00-7:00 PM pickup — the earliest valid delivery", () => {
-    const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "18:00", NEXT_DAY);
+    const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "18:00", NEXT_DAY, { now: NOW });
     expect(windows[0]?.value).toBe("17:00");
     expect(windows.map((w) => w.value)).toContain("17:00");
   });
 
   it("accepts 4:00-5:00 PM the next day after a 5:00-6:00 PM pickup", () => {
-    const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "17:00", NEXT_DAY);
+    const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "17:00", NEXT_DAY, { now: NOW });
     expect(windows[0]?.value).toBe("16:00");
   });
 
   it("a morning pickup's mathematical threshold falls before business hours, so the first available window is still 9:00 AM", () => {
     const threshold = earliestStandardFlexibleDelivery(PICKUP_DATE, "09:00");
     expect(threshold).toEqual({ date: NEXT_DAY, minutes: 8 * 60 }); // 8:00 AM — not itself a bookable window
-    const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "09:00", NEXT_DAY);
+    const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "09:00", NEXT_DAY, { now: NOW });
     expect(windows[0]?.value).toBe("09:00");
     expect(windows).toHaveLength(10); // every fixed window that day qualifies
   });
 
   it("pickup+2 always satisfies the gap on its own, for any pickup window in the business day", () => {
     for (const pickupTime of ["09:00", "12:00", "18:00"]) {
-      const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, pickupTime, PLUS_TWO);
+      const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, pickupTime, PLUS_TWO, { now: NOW });
       expect(windows).toHaveLength(10);
     }
   });
@@ -218,7 +230,7 @@ describe("earliestStandardFlexibleDelivery / getStandardFlexibleDeliveryWindows 
   it("rejects every window on a delivery date entirely before the threshold date", () => {
     // A 6:00-7:00 PM pickup's threshold lands on the next day — the pickup
     // date itself (a same-day delivery) can never satisfy a 22-hour gap.
-    const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "18:00", PICKUP_DATE);
+    const windows = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "18:00", PICKUP_DATE, { now: NOW });
     expect(windows).toHaveLength(0);
   });
 
@@ -234,40 +246,40 @@ describe("earliestStandardFlexibleDelivery / getStandardFlexibleDeliveryWindows 
     });
 
     it("getStandardFlexibleDeliveryWindows returns an empty array for a non-time string", () => {
-      expect(() => getStandardFlexibleDeliveryWindows(PICKUP_DATE, "not-a-time", NEXT_DAY)).not.toThrow();
-      expect(getStandardFlexibleDeliveryWindows(PICKUP_DATE, "not-a-time", NEXT_DAY)).toEqual([]);
+      expect(() => getStandardFlexibleDeliveryWindows(PICKUP_DATE, "not-a-time", NEXT_DAY, { now: NOW })).not.toThrow();
+      expect(getStandardFlexibleDeliveryWindows(PICKUP_DATE, "not-a-time", NEXT_DAY, { now: NOW })).toEqual([]);
     });
 
     it("rejects an out-of-range hour ('25:00') without throwing, returning no windows", () => {
       expect(earliestStandardFlexibleDelivery(PICKUP_DATE, "25:00")).toBeNull();
-      expect(getStandardFlexibleDeliveryWindows(PICKUP_DATE, "25:00", NEXT_DAY)).toEqual([]);
+      expect(getStandardFlexibleDeliveryWindows(PICKUP_DATE, "25:00", NEXT_DAY, { now: NOW })).toEqual([]);
     });
 
     it("rejects an out-of-range minute ('10:75') without throwing, returning no windows", () => {
       expect(earliestStandardFlexibleDelivery(PICKUP_DATE, "10:75")).toBeNull();
-      expect(getStandardFlexibleDeliveryWindows(PICKUP_DATE, "10:75", NEXT_DAY)).toEqual([]);
+      expect(getStandardFlexibleDeliveryWindows(PICKUP_DATE, "10:75", NEXT_DAY, { now: NOW })).toEqual([]);
     });
 
     it("does not silently normalize a malformed time into some other valid time", () => {
       // "25:00" must never be read as "01:00" the next day, or "10:75" as
       // "11:15" — both stay rejected outright rather than reinterpreted.
-      const misreadAsOneAM = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "25:00", NEXT_DAY);
-      const misreadAsElevenFifteen = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "10:75", NEXT_DAY);
+      const misreadAsOneAM = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "25:00", NEXT_DAY, { now: NOW });
+      const misreadAsElevenFifteen = getStandardFlexibleDeliveryWindows(PICKUP_DATE, "10:75", NEXT_DAY, { now: NOW });
       expect(misreadAsOneAM).toEqual([]);
       expect(misreadAsElevenFifteen).toEqual([]);
     });
 
     it("rejects an empty string without throwing", () => {
       expect(earliestStandardFlexibleDelivery(PICKUP_DATE, "")).toBeNull();
-      expect(getStandardFlexibleDeliveryWindows(PICKUP_DATE, "", NEXT_DAY)).toEqual([]);
+      expect(getStandardFlexibleDeliveryWindows(PICKUP_DATE, "", NEXT_DAY, { now: NOW })).toEqual([]);
     });
 
     it("rejects trailing garbage after a valid-looking HH:MM prefix, not just the prefix", () => {
       for (const malformed of ["18:00garbage", "18:00:99", "18:00:00garbage"]) {
         expect(() => earliestStandardFlexibleDelivery(PICKUP_DATE, malformed)).not.toThrow();
         expect(earliestStandardFlexibleDelivery(PICKUP_DATE, malformed)).toBeNull();
-        expect(() => getStandardFlexibleDeliveryWindows(PICKUP_DATE, malformed, NEXT_DAY)).not.toThrow();
-        expect(getStandardFlexibleDeliveryWindows(PICKUP_DATE, malformed, NEXT_DAY)).toEqual([]);
+        expect(() => getStandardFlexibleDeliveryWindows(PICKUP_DATE, malformed, NEXT_DAY, { now: NOW })).not.toThrow();
+        expect(getStandardFlexibleDeliveryWindows(PICKUP_DATE, malformed, NEXT_DAY, { now: NOW })).toEqual([]);
       }
     });
   });
