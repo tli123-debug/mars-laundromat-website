@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { bookingSchema, fieldsToResetOnServiceChange, windowLabel } from "./booking-schema";
 import { addDays, getBrooklynToday, getWindowsForDate } from "@/lib/booking-hours";
 import { getDryCleaningDeliveryDate } from "@/lib/dry-cleaning-schedule";
-import { ACQUISITION_SOURCES } from "@/lib/acquisition-source";
+import { ACQUISITION_SOURCES, normalizeAcquisitionSource } from "@/lib/acquisition-source";
 
 // Anchored 10 days out so "already started today" filtering never applies —
 // these tests exercise the rule logic (delivery-date-matches-speed,
@@ -455,6 +455,63 @@ describe("acquisitionSource field", () => {
     const input = baseInput({ acquisitionSource: "nextdoor" });
     delete (input as Record<string, unknown>).smsConsent;
     expect(bookingSchema.safeParse(input).success).toBe(false);
+  });
+
+  // Regression coverage for a real bug: max(50) alone made an overlong or
+  // wrong-typed value fail the entire safeParse — rejecting an otherwise
+  // valid booking outright, contradicting "missing or invalid attribution
+  // must never block a booking." .catch("") on the field fixes this by
+  // making the field itself unable to fail; these tests prove that both at
+  // the schema boundary and all the way through to the null database value.
+  describe("fault tolerance for malformed input (never blocks the booking)", () => {
+    it("an overlong value (>50 chars) does not reject an otherwise valid booking", () => {
+      const overlong = "a".repeat(51);
+      const result = bookingSchema.safeParse(baseInput({ acquisitionSource: overlong }));
+      expect(result.success).toBe(true);
+    });
+
+    it("a forged non-string value does not reject an otherwise valid booking, for several forged types", () => {
+      const forgedValues: unknown[] = [12345, ["nextdoor"], { value: "nextdoor" }, true, null];
+      for (const forged of forgedValues) {
+        const result = bookingSchema.safeParse(baseInput({ acquisitionSource: forged }));
+        expect(result.success).toBe(true);
+      }
+    });
+
+    it("both an overlong value and a forged non-string value resolve all the way through to the null attribution path, not just a passing parse", () => {
+      const overlong = "a".repeat(51);
+      const overlongResult = bookingSchema.safeParse(baseInput({ acquisitionSource: overlong }));
+      expect(overlongResult.success).toBe(true);
+      if (overlongResult.success) {
+        expect(overlongResult.data.acquisitionSource).toBe("");
+        expect(normalizeAcquisitionSource(overlongResult.data.acquisitionSource)).toBeNull();
+      }
+
+      const forgedResult = bookingSchema.safeParse(baseInput({ acquisitionSource: { value: "nextdoor" } }));
+      expect(forgedResult.success).toBe(true);
+      if (forgedResult.success) {
+        expect(forgedResult.data.acquisitionSource).toBe("");
+        expect(normalizeAcquisitionSource(forgedResult.data.acquisitionSource)).toBeNull();
+      }
+    });
+
+    it("an unrelated invalid field still rejects normally, even alongside a malformed acquisitionSource — the fault tolerance is scoped to this one field, not the whole schema", () => {
+      const overlong = "a".repeat(51);
+
+      const missingName = baseInput({ acquisitionSource: overlong });
+      delete (missingName as Record<string, unknown>).name;
+      expect(bookingSchema.safeParse(missingName).success).toBe(false);
+
+      const badPhone = baseInput({ acquisitionSource: [1, 2, 3], phone: "123" });
+      expect(bookingSchema.safeParse(badPhone).success).toBe(false);
+
+      const noServiceSelected = baseInput({
+        acquisitionSource: overlong,
+        washAndFold: false,
+        dryCleaning: false,
+      });
+      expect(bookingSchema.safeParse(noServiceSelected).success).toBe(false);
+    });
   });
 });
 

@@ -55,12 +55,19 @@ export const bookingSchema = z
       error: "Please check the box to continue by text, or call us at +1 (929) 870-1166 instead",
     }),
     specialInstructions: z.string().trim().max(1000).optional().or(z.literal("")),
-    // Shape validation only — an optional string, blank or not. Whether the
-    // value is actually one of the permitted sources is checked separately
-    // in createBooking() via normalizeAcquisitionSource(), which silently
-    // maps anything unrecognized to null rather than failing validation —
-    // missing or invalid attribution must never block a booking.
-    acquisitionSource: z.string().trim().max(50).optional().or(z.literal("")),
+    // Fault-tolerant at parse time itself, not just shape-checked: .catch("")
+    // means an overlong string OR a value of the wrong type entirely (e.g. a
+    // hand-crafted request bypassing the client form) can never fail this
+    // field and reject the WHOLE booking — it silently resolves to "" instead,
+    // same as an omitted or already-blank value. .optional()/.or(z.literal(""))
+    // would still be a rejection path here (a >50-char string or a non-string
+    // fails both branches of that union), which is exactly the bug .catch()
+    // fixes — this field must never be the reason an otherwise-valid booking
+    // gets rejected. Whether "" or any other string is actually one of the
+    // permitted sources is checked separately, downstream, by
+    // normalizeAcquisitionSource() in createBooking(), which maps anything
+    // unrecognized (including "") to null.
+    acquisitionSource: z.string().trim().max(50).catch(""),
     // Honeypot — real users never see or fill this field.
     companyWebsite: z.string().max(0).optional().or(z.literal("")),
   })
