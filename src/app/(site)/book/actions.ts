@@ -5,6 +5,7 @@ import { bookingSchema, type BookingInput } from "@/lib/validations/booking-sche
 import { sendBookingNotification } from "@/lib/email/send-booking-notification";
 import { translateToChinese } from "@/lib/translate/translate-to-chinese";
 import { normalizeServiceType, resolveServiceSpeed, serviceTypeIncludesDryCleaning } from "@/lib/service-type";
+import { normalizeAcquisitionSource } from "@/lib/acquisition-source";
 
 type ActionResult = { status: "success" | "error"; message: string };
 
@@ -34,6 +35,13 @@ export async function createBooking(input: BookingInput): Promise<ActionResult> 
     return { status: "error", message: "Please check the form and try again." };
   }
   const resolvedServiceSpeed = resolveServiceSpeed(serviceType, parsed.data.serviceSpeed ?? "standard");
+
+  // Never trust the submitted value merely because the client already
+  // normalized/hid it (a tracked-link visit sets this without the customer
+  // ever seeing the question) — an unrecognized or malformed value here
+  // silently becomes null rather than blocking the booking, same as it does
+  // for the /book page's own ?source= query parameter.
+  const acquisitionSource = normalizeAcquisitionSource(parsed.data.acquisitionSource);
 
   // Only stored when the derived service type actually includes dry
   // cleaning — a description submitted alongside a Wash & Fold-only
@@ -91,6 +99,7 @@ export async function createBooking(input: BookingInput): Promise<ActionResult> 
     service_speed: resolvedServiceSpeed,
     dry_cleaning_item_description: dryCleaningItemDescription,
     dry_cleaning_item_description_zh: dryCleaningItemDescriptionZh,
+    acquisition_source: acquisitionSource,
   });
 
   if (error) {
@@ -112,6 +121,7 @@ export async function createBooking(input: BookingInput): Promise<ActionResult> 
       serviceSpeed: resolvedServiceSpeed,
       dryCleaningItemDescription,
       dryCleaningItemDescriptionZh,
+      acquisitionSource,
     });
   } catch (emailError) {
     console.error(`Booking ${bookingId}: notification email failed`, emailError);

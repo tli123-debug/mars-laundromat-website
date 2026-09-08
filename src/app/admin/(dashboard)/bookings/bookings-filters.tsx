@@ -3,18 +3,28 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { DATE_RANGE_OPTIONS, type DateRangeOption } from "./date-range";
 import { BOOKING_VIEW_OPTIONS, type BookingView } from "./view-filter";
+import { ACQUISITION_SOURCE_FILTER_OPTIONS, type AcquisitionSourceFilter } from "./acquisition-source-filter";
 
 export function BookingsFilters({
   currentRange,
   currentSearch,
   currentView,
+  currentSource,
 }: {
   currentRange: DateRangeOption;
   currentSearch: string;
   currentView: BookingView;
+  currentSource: AcquisitionSourceFilter;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -26,18 +36,19 @@ export function BookingsFilters({
     setSearchInput(currentSearch);
   }, [currentSearch]);
 
-  function navigate(view: BookingView, range: DateRangeOption, search: string) {
+  function navigate(view: BookingView, range: DateRangeOption, search: string, source: AcquisitionSourceFilter) {
     const params = new URLSearchParams();
     if (view !== "active") params.set("view", view);
     if (range !== "all-time") params.set("range", range);
     if (search) params.set("q", search);
+    if (source !== "all") params.set("source", source);
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
   useEffect(() => {
     if (searchInput === currentSearch) return;
-    const timeout = setTimeout(() => navigate(currentView, currentRange, searchInput), 300);
+    const timeout = setTimeout(() => navigate(currentView, currentRange, searchInput, currentSource), 300);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchInput]);
@@ -50,7 +61,7 @@ export function BookingsFilters({
             key={option.value}
             type="button"
             aria-pressed={currentView === option.value}
-            onClick={() => navigate(option.value, currentRange, searchInput)}
+            onClick={() => navigate(option.value, currentRange, searchInput, currentSource)}
             className={cn(
               "rounded-full border px-4 py-1.5 text-sm font-semibold transition-colors",
               currentView === option.value
@@ -63,13 +74,13 @@ export function BookingsFilters({
         ))}
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {DATE_RANGE_OPTIONS.map((option) => (
             <button
               key={option.value}
               type="button"
               aria-pressed={currentRange === option.value}
-              onClick={() => navigate(currentView, option.value, searchInput)}
+              onClick={() => navigate(currentView, option.value, searchInput, currentSource)}
               className={cn(
                 "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
                 currentRange === option.value
@@ -80,6 +91,23 @@ export function BookingsFilters({
               {option.label}
             </button>
           ))}
+          <Select
+            value={currentSource}
+            onValueChange={(value) =>
+              navigate(currentView, currentRange, searchInput, value as AcquisitionSourceFilter)
+            }
+          >
+            <SelectTrigger size="sm" aria-label="Filter by acquisition source 按来源筛选" className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ACQUISITION_SOURCE_FILTER_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <Input
           type="search"

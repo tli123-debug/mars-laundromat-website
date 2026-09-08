@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { createClient } from "@/lib/supabase/server";
+import { isValidAcquisitionSourceUpdate } from "@/lib/acquisition-source";
 import {
   buildServiceQuoteUpdatePayload,
   canMarkQuoteSentForServiceType,
@@ -329,6 +330,47 @@ export async function changeServiceType(bookingId: string, newServiceType: unkno
 
   if (error) {
     console.error("Change service type failed:", error);
+    return { error: "Something went wrong updating that booking." };
+  }
+
+  revalidateBookingPaths(bookingId);
+  return { error: null };
+}
+
+/**
+ * Admin-only correction for how a customer discovered Mars — set or cleared
+ * at any time, independent of the booking's status/paid/quote state (unlike
+ * changeServiceType above, this is reference metadata with no downstream
+ * financial or scheduling effect, so it needs no equivalent gate). null
+ * clears it back to "not provided." isValidAcquisitionSourceUpdate rejects
+ * anything else outright rather than silently normalizing it, since this is
+ * a deliberate authenticated action, not public form input.
+ */
+export async function updateAcquisitionSource(bookingId: string, newSource: unknown) {
+  const user = await requireAdmin();
+
+  if (!isValidAcquisitionSourceUpdate(newSource)) {
+    return { error: "Please choose a valid source." };
+  }
+
+  const supabase = await createClient();
+  const { data: booking, error: fetchError } = await supabase
+    .from("bookings")
+    .select("id")
+    .eq("id", bookingId)
+    .single();
+
+  if (fetchError || !booking) {
+    return { error: "Couldn't find that booking." };
+  }
+
+  const { error } = await supabase
+    .from("bookings")
+    .update({ acquisition_source: newSource, updated_by: user.id })
+    .eq("id", bookingId);
+
+  if (error) {
+    console.error("Update acquisition source failed:", error);
     return { error: "Something went wrong updating that booking." };
   }
 

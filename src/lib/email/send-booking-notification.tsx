@@ -2,7 +2,7 @@ import "server-only";
 import { Resend } from "resend";
 import NewBookingNotification from "@/emails/new-booking-notification";
 import type { BookingInput } from "@/lib/validations/booking-schema";
-import type { ServiceSpeed, ServiceType } from "@/types/database.types";
+import type { AcquisitionSource, ServiceSpeed, ServiceType } from "@/types/database.types";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -17,6 +17,7 @@ interface SendBookingNotificationArgs {
   serviceSpeed: ServiceSpeed;
   dryCleaningItemDescription: string | null;
   dryCleaningItemDescriptionZh: string | null;
+  acquisitionSource: AcquisitionSource | null;
 }
 
 export async function sendBookingNotification({
@@ -26,6 +27,7 @@ export async function sendBookingNotification({
   serviceSpeed,
   dryCleaningItemDescription,
   dryCleaningItemDescriptionZh,
+  acquisitionSource,
 }: SendBookingNotificationArgs) {
   const { error } = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
@@ -46,6 +48,7 @@ export async function sendBookingNotification({
         dryCleaningItemDescription={dryCleaningItemDescription}
         dryCleaningItemDescriptionZh={dryCleaningItemDescriptionZh}
         specialInstructions={booking.specialInstructions || null}
+        acquisitionSource={acquisitionSource}
       />
     ),
   });

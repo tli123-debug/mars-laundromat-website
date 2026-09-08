@@ -4,7 +4,9 @@ import {
   ACQUISITION_SOURCE_FORM_OPTIONS,
   ACQUISITION_SOURCES,
   isAcquisitionSource,
+  isValidAcquisitionSourceUpdate,
   normalizeAcquisitionSource,
+  resolveAcquisitionSourceFormDefault,
 } from "./acquisition-source";
 
 describe("ACQUISITION_SOURCES", () => {
@@ -76,5 +78,40 @@ describe("ACQUISITION_SOURCE_ADMIN_LABELS", () => {
     for (const source of ACQUISITION_SOURCES) {
       expect(ACQUISITION_SOURCE_ADMIN_LABELS[source]?.trim().length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("resolveAcquisitionSourceFormDefault", () => {
+  it("uses the tracked source when present, for every permitted source", () => {
+    for (const source of ACQUISITION_SOURCES) {
+      expect(resolveAcquisitionSourceFormDefault(source)).toBe(source);
+    }
+  });
+
+  it("falls back to empty string when there's no tracked source", () => {
+    expect(resolveAcquisitionSourceFormDefault(null)).toBe("");
+  });
+});
+
+describe("isValidAcquisitionSourceUpdate", () => {
+  it("accepts every permitted source", () => {
+    for (const source of ACQUISITION_SOURCES) {
+      expect(isValidAcquisitionSourceUpdate(source)).toBe(true);
+    }
+  });
+
+  it("accepts null (clearing the value back to 'not provided')", () => {
+    expect(isValidAcquisitionSourceUpdate(null)).toBe(true);
+  });
+
+  it("rejects arbitrary strings", () => {
+    expect(isValidAcquisitionSourceUpdate("billboard")).toBe(false);
+    expect(isValidAcquisitionSourceUpdate("")).toBe(false);
+  });
+
+  it("rejects undefined and non-string types", () => {
+    expect(isValidAcquisitionSourceUpdate(undefined)).toBe(false);
+    expect(isValidAcquisitionSourceUpdate(123)).toBe(false);
+    expect(isValidAcquisitionSourceUpdate(["nextdoor"])).toBe(false);
   });
 });

@@ -11,7 +11,7 @@ import {
   Text,
 } from "@react-email/components";
 import { windowLabel } from "@/lib/validations/booking-schema";
-import type { ServiceSpeed, ServiceType } from "@/types/database.types";
+import type { AcquisitionSource, ServiceSpeed, ServiceType } from "@/types/database.types";
 
 const SERVICE_SPEED_LABELS: Record<ServiceSpeed, string> = {
   standard: "Standard Next-Day",
@@ -24,6 +24,24 @@ const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
   wash_and_fold: "Wash & Fold",
   dry_cleaning: "Dry Cleaning & Ironing",
   both: "Wash & Fold + Dry Cleaning & Ironing",
+};
+
+// This email's own English-only labels, deliberately separate from the
+// bilingual ACQUISITION_SOURCE_ADMIN_LABELS in src/lib/acquisition-source.ts
+// (which serves the admin dashboard, a different audience) — same
+// separation SERVICE_TYPE_LABELS/SERVICE_SPEED_LABELS above already keep.
+const ACQUISITION_SOURCE_LABELS: Record<AcquisitionSource, string> = {
+  google_ads: "Google Ads",
+  google_business: "Google Business",
+  google_search_maps: "Google Search or Maps",
+  nextdoor: "Nextdoor",
+  facebook_instagram: "Facebook or Instagram",
+  meta_ads: "Meta Ads",
+  apartment_flyer: "Apartment or building flyer",
+  storefront: "Walked past the store",
+  referral: "Friend or family",
+  existing_customer: "Existing Mars customer",
+  other: "Other",
 };
 
 interface NewBookingNotificationProps {
@@ -40,6 +58,7 @@ interface NewBookingNotificationProps {
   dryCleaningItemDescription?: string | null;
   dryCleaningItemDescriptionZh?: string | null;
   specialInstructions?: string | null;
+  acquisitionSource?: AcquisitionSource | null;
 }
 
 export default function NewBookingNotification({
@@ -56,6 +75,7 @@ export default function NewBookingNotification({
   dryCleaningItemDescription,
   dryCleaningItemDescriptionZh,
   specialInstructions,
+  acquisitionSource,
 }: NewBookingNotificationProps) {
   const isSameDay = serviceSpeed === "same_day";
 
@@ -133,6 +153,11 @@ export default function NewBookingNotification({
               {specialInstructions && (
                 <Text style={{ margin: "4px 0" }}>
                   <strong>Notes:</strong> {specialInstructions}
+                </Text>
+              )}
+              {acquisitionSource && (
+                <Text style={{ margin: "4px 0" }}>
+                  <strong>Heard about us via:</strong> {ACQUISITION_SOURCE_LABELS[acquisitionSource]}
                 </Text>
               )}
             </Column>

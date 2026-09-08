@@ -14,9 +14,15 @@ import { StatusSelect } from "./status-select";
 import { PaymentControl } from "./payment-control";
 import { ServiceTypeBadge } from "./service-type-badge";
 import { RecurringBadge } from "./recurring-badge";
+import { AcquisitionSourceBadge } from "./acquisition-source-badge";
 import { BookingsFilters } from "./bookings-filters";
 import { isDateRangeOption, getDateRange, type DateRangeOption } from "./date-range";
 import { isBookingView, statusesForView, type BookingView } from "./view-filter";
+import {
+  acquisitionSourceQueryFilterFor,
+  isAcquisitionSourceFilter,
+  type AcquisitionSourceFilter,
+} from "./acquisition-source-filter";
 import type { Database } from "@/types/database.types";
 
 // Includes the embedded recurring_schedules relation — see the same
@@ -50,6 +56,8 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
   const rawView = first(searchParams.view);
   const view: BookingView = isBookingView(rawView) ? rawView : "active";
   const search = (first(searchParams.q) ?? "").trim();
+  const rawSource = first(searchParams.source);
+  const sourceFilter: AcquisitionSourceFilter = isAcquisitionSourceFilter(rawSource) ? rawSource : "all";
 
   const supabase = await createClient();
 
@@ -67,6 +75,16 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
   const { start, end } = getDateRange(range);
   if (start) bookingsQuery = bookingsQuery.gte("created_at", start.toISOString());
   if (end) bookingsQuery = bookingsQuery.lt("created_at", end.toISOString());
+
+  // Filtering happens in the query itself, not by hiding already-rendered
+  // rows — acquisitionSourceQueryFilterFor() decides which Supabase method
+  // applies (or none, for "all").
+  const sourceQueryFilter = acquisitionSourceQueryFilterFor(sourceFilter);
+  if (sourceQueryFilter.kind === "is_null") {
+    bookingsQuery = bookingsQuery.is("acquisition_source", null);
+  } else if (sourceQueryFilter.kind === "equals") {
+    bookingsQuery = bookingsQuery.eq("acquisition_source", sourceQueryFilter.value);
+  }
 
   const [{ data: rows, error }, { data: allForCounts }] = await Promise.all([
     bookingsQuery.returns<BookingRow[]>(),
@@ -105,7 +123,12 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
       </p>
 
       <div className="mt-6">
-        <BookingsFilters currentRange={range} currentSearch={search} currentView={view} />
+        <BookingsFilters
+          currentRange={range}
+          currentSearch={search}
+          currentView={view}
+          currentSource={sourceFilter}
+        />
       </div>
 
       <p className="mt-4 text-sm text-muted-foreground">
@@ -164,6 +187,9 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
                   </div>
                   <div className="text-sm text-muted-foreground">{booking.phone}</div>
                   <div className="text-sm text-muted-foreground">{booking.address}</div>
+                  <div className="mt-1">
+                    <AcquisitionSourceBadge acquisitionSource={booking.acquisition_source} />
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div>{formatDate(booking.preferred_pickup_date)}</div>

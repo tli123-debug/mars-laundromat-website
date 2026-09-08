@@ -86,3 +86,31 @@ export const ACQUISITION_SOURCE_ADMIN_LABELS: Record<AcquisitionSource, string> 
 
 /** Shown wherever a booking's acquisition_source is null — list badge, filter, and detail page alike. */
 export const ACQUISITION_SOURCE_NOT_PROVIDED_LABEL = "Not provided 未提供";
+
+/**
+ * The public booking form's initial `acquisitionSource` field value, given
+ * whatever tracked source (if any) the /book page's own ?source= query
+ * parameter resolved via normalizeAcquisitionSource(). "" (not null)
+ * matches every other optional field's own empty-string default in
+ * bookingFormDefaults — react-hook-form/Zod's `.optional().or(z.literal(""))`
+ * shape expects a string, not null.
+ */
+export function resolveAcquisitionSourceFormDefault(
+  trackedSource: AcquisitionSource | null
+): AcquisitionSource | "" {
+  return trackedSource ?? "";
+}
+
+/**
+ * Whether a raw admin-submitted correction value is acceptable to write:
+ * any permitted source, or null to explicitly clear it back to "not
+ * provided." Deliberately stricter than normalizeAcquisitionSource(), which
+ * silently maps a bad value to null for the public form (where attribution
+ * must never block a booking) — an admin correction is a deliberate,
+ * authenticated action, so a bad value here should surface as a rejected
+ * update, not be quietly swallowed into a different value than what staff
+ * asked to save.
+ */
+export function isValidAcquisitionSourceUpdate(value: unknown): value is AcquisitionSource | null {
+  return value === null || (typeof value === "string" && isAcquisitionSource(value));
+}

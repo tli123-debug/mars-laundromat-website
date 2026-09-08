@@ -37,6 +37,8 @@ import { SAME_DAY_FEE_CENTS } from "@/lib/pricing/calculate-quote";
 import { formatDollars } from "@/lib/format-currency";
 import { booking as bookingContent } from "@/content/booking";
 import { createBooking } from "@/app/(site)/book/actions";
+import { ACQUISITION_SOURCE_FORM_OPTIONS, resolveAcquisitionSourceFormDefault } from "@/lib/acquisition-source";
+import type { AcquisitionSource } from "@/types/database.types";
 
 const SERVICE_SPEED_OPTIONS: { value: ServiceSpeed; label: string }[] = [
   { value: "standard", label: "Standard Next-Day" },
@@ -52,8 +54,18 @@ function formatDateDisplay(dateStr: string): string {
   });
 }
 
-export function BookingForm() {
+export function BookingForm({
+  trackedAcquisitionSource = null,
+}: {
+  // Set by the /book page from its own validated ?source= query parameter —
+  // present only for a recognized tracked campaign link. When set, the
+  // optional "How did you hear about us?" question is skipped entirely
+  // rather than asking a customer who arrived via a known link to answer it
+  // again.
+  trackedAcquisitionSource?: AcquisitionSource | null;
+} = {}) {
   const [isPending, startTransition] = useTransition();
+  const hasTrackedAcquisitionSource = trackedAcquisitionSource !== null;
   const {
     register,
     control,
@@ -65,7 +77,10 @@ export function BookingForm() {
     formState: { errors },
   } = useForm<BookingInput>({
     resolver: zodResolver(bookingSchema),
-    defaultValues: bookingFormDefaults,
+    defaultValues: {
+      ...bookingFormDefaults,
+      acquisitionSource: resolveAcquisitionSourceFormDefault(trackedAcquisitionSource),
+    },
   });
 
   // Radix Select doesn't reliably clear its displayed value when react-hook-form's
@@ -621,6 +636,33 @@ export function BookingForm() {
           {...register("specialInstructions")}
         />
       </div>
+
+      {!hasTrackedAcquisitionSource && (
+        <div className="grid gap-2">
+          <Label htmlFor="acquisitionSource">How did you hear about us? (Optional)</Label>
+          <Controller
+            control={control}
+            name="acquisitionSource"
+            render={({ field }) => (
+              <Select key={selectResetKey} value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger id="acquisitionSource" className="w-full">
+                  <SelectValue placeholder="Select one (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACQUISITION_SOURCE_FORM_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          <p className="text-xs text-muted-foreground">
+            This helps our family understand what&apos;s working.
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-2">
         <div className="flex items-start gap-3">

@@ -14,6 +14,7 @@ import { QuoteEditor } from "./quote-editor";
 import { ServiceTypeSelect } from "./service-type-select";
 import { DeleteBooking } from "./delete-booking";
 import { RecurringEnrollment } from "./recurring-enrollment";
+import { AcquisitionSourceSelect } from "./acquisition-source-select";
 
 // Includes the embedded recurring_schedules relation — see the same
 // .returns<>() comment in today/page.tsx.
@@ -180,6 +181,13 @@ export default async function AdminBookingDetailPage(props: PageProps<"/admin/bo
             defaultPickupTime={booking.confirmed_pickup_time ?? booking.preferred_pickup_time}
             defaultDeliveryTime={booking.confirmed_delivery_time ?? booking.preferred_delivery_time}
           />
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-border bg-background p-4">
+        <h2 className="font-display text-base font-semibold">Acquisition Source 来源</h2>
+        <div className="mt-3">
+          <AcquisitionSourceSelect bookingId={booking.id} acquisitionSource={booking.acquisition_source} />
         </div>
       </section>
 

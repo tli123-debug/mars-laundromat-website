@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { bookingSchema, fieldsToResetOnServiceChange, windowLabel } from "./booking-schema";
 import { addDays, getBrooklynToday, getWindowsForDate } from "@/lib/booking-hours";
 import { getDryCleaningDeliveryDate } from "@/lib/dry-cleaning-schedule";
+import { ACQUISITION_SOURCES } from "@/lib/acquisition-source";
 
 // Anchored 10 days out so "already started today" filtering never applies —
 // these tests exercise the rule logic (delivery-date-matches-speed,
@@ -426,6 +427,34 @@ describe("bookingSchema — SMS consent", () => {
 
   it("accepts submission when consent is checked", () => {
     expect(bookingSchema.safeParse(baseInput({ smsConsent: true })).success).toBe(true);
+  });
+});
+
+describe("acquisitionSource field", () => {
+  it("accepts submission when the field is omitted entirely", () => {
+    const input = baseInput();
+    delete (input as Record<string, unknown>).acquisitionSource;
+    expect(bookingSchema.safeParse(input).success).toBe(true);
+  });
+
+  it("accepts an empty string", () => {
+    expect(bookingSchema.safeParse(baseInput({ acquisitionSource: "" })).success).toBe(true);
+  });
+
+  it("accepts every permitted acquisition source", () => {
+    for (const source of ACQUISITION_SOURCES) {
+      expect(bookingSchema.safeParse(baseInput({ acquisitionSource: source })).success).toBe(true);
+    }
+  });
+
+  it("accepts shape-wise even an unrecognized value — enum membership is checked downstream by normalizeAcquisitionSource(), not this schema, so an invalid value never blocks submission here", () => {
+    expect(bookingSchema.safeParse(baseInput({ acquisitionSource: "billboard" })).success).toBe(true);
+  });
+
+  it("still rejects submission for an unrelated reason even when acquisitionSource is valid", () => {
+    const input = baseInput({ acquisitionSource: "nextdoor" });
+    delete (input as Record<string, unknown>).smsConsent;
+    expect(bookingSchema.safeParse(input).success).toBe(false);
   });
 });
 

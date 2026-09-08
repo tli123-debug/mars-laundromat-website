@@ -55,6 +55,12 @@ export const bookingSchema = z
       error: "Please check the box to continue by text, or call us at +1 (929) 870-1166 instead",
     }),
     specialInstructions: z.string().trim().max(1000).optional().or(z.literal("")),
+    // Shape validation only — an optional string, blank or not. Whether the
+    // value is actually one of the permitted sources is checked separately
+    // in createBooking() via normalizeAcquisitionSource(), which silently
+    // maps anything unrecognized to null rather than failing validation —
+    // missing or invalid attribution must never block a booking.
+    acquisitionSource: z.string().trim().max(50).optional().or(z.literal("")),
     // Honeypot — real users never see or fill this field.
     companyWebsite: z.string().max(0).optional().or(z.literal("")),
   })
@@ -223,6 +229,7 @@ export const bookingFormDefaults: BookingInput = {
   // customer actually checks the box, same trick as the empty string above.
   smsConsent: false as unknown as BookingInput["smsConsent"],
   specialInstructions: "",
+  acquisitionSource: "",
   companyWebsite: "",
 };
 
