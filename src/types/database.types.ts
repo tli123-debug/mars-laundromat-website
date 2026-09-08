@@ -6,8 +6,9 @@
  * 20260822000000_pickup_delivery_v1.sql,
  * 20260826000000_dry_cleaning_expansion.sql,
  * 20260827000000_status_simplification_and_delete_policy.sql,
- * 20260828000000_same_day_fee_reduction.sql, and
- * 20260830000000_recurring_pickups_v1.sql.
+ * 20260828000000_same_day_fee_reduction.sql,
+ * 20260830000000_recurring_pickups_v1.sql, and
+ * 20260908000000_add_acquisition_source_to_bookings.sql.
  * If the schema changes, update this alongside the migration (or regenerate via
  * `npx supabase gen types typescript --linked --schema public` once the project is CLI-linked).
  */
@@ -36,6 +37,21 @@ export type QuoteStatus = "not_started" | "draft" | "sent";
 export type PaymentMethod = "cash" | "zelle";
 export type RecurringScheduleStatus = "active" | "paused" | "cancelled";
 export type RecurringFrequency = "weekly" | "every_two_weeks";
+// How the original customer discovered Mars — distinct from BookingSource,
+// which means how the booking *record* was created (website/phone/recurring).
+// See src/lib/acquisition-source.ts, the shared source of truth for this list.
+export type AcquisitionSource =
+  | "google_ads"
+  | "google_business"
+  | "google_search_maps"
+  | "nextdoor"
+  | "facebook_instagram"
+  | "meta_ads"
+  | "apartment_flyer"
+  | "storefront"
+  | "referral"
+  | "existing_customer"
+  | "other";
 
 export interface Database {
   public: {
@@ -99,6 +115,7 @@ export interface Database {
           // bookings_recurring_fields_check.
           recurring_schedule_id: string | null;
           recurring_occurrence_date: string | null;
+          acquisition_source: AcquisitionSource | null;
         };
         Insert: {
           id?: string;
@@ -146,6 +163,7 @@ export interface Database {
           dry_cleaning_notes?: string | null;
           recurring_schedule_id?: string | null;
           recurring_occurrence_date?: string | null;
+          acquisition_source?: AcquisitionSource | null;
         };
         Update: {
           id?: string;
@@ -193,6 +211,7 @@ export interface Database {
           dry_cleaning_notes?: string | null;
           recurring_schedule_id?: string | null;
           recurring_occurrence_date?: string | null;
+          acquisition_source?: AcquisitionSource | null;
         };
         // created_by/updated_by/payment_verified_by reference auth.users, not a
         // public-schema table — included for parity with what the Supabase CLI
