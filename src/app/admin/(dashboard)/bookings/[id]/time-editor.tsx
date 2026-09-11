@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getWindowsForDate } from "@/lib/booking-hours";
+import { getBrooklynToday, getWindowsForDate } from "@/lib/booking-hours";
 import { windowLabel } from "@/lib/validations/booking-schema";
 import {
   hasCompleteProposedTime,
@@ -127,7 +127,14 @@ export function TimeEditor({
   const showClearProposedTime = isPreLifecycleStatus && hasProposed;
   const showTextPickupConfirmation = status === "confirmed" && hasCompleteSchedule;
 
-  const proposedDeliveryReady = Boolean(proposedDeliveryDate && proposedDeliveryTime);
+  const brooklynToday = getBrooklynToday();
+  const proposedDeliveryWindows =
+    proposedDeliveryDate && proposedDeliveryDate >= brooklynToday
+      ? getWindowsForDate(proposedDeliveryDate)
+      : [];
+  const proposedDeliveryReady = proposedDeliveryWindows.some(
+    (window) => window.value === proposedDeliveryTime
+  );
 
   function run(action: () => Promise<{ error: string | null }>, successMessage: string) {
     startTransition(async () => {
@@ -369,7 +376,7 @@ export function TimeEditor({
       {editingDelivery && isPostPickup && (
         <div className="space-y-3 rounded-lg border border-border p-3">
           <p className="text-xs font-medium text-muted-foreground">
-            1. Save Proposed Delivery 保存建议送件时间 · 2. Text Customer 发送短信 · 3. Confirm New
+            1. Enter Proposed Delivery 输入建议送件时间 · 2. Text Customer 发送短信 · 3. Confirm New
             Delivery Time After Customer Agrees 客户同意后确认新送件时间
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -386,8 +393,12 @@ export function TimeEditor({
               <Input
                 id="proposed-delivery-only-date"
                 type="date"
+                min={brooklynToday}
                 value={proposedDeliveryDate}
-                onChange={(e) => setProposedDeliveryDate(e.target.value)}
+                onChange={(e) => {
+                  setProposedDeliveryDate(e.target.value);
+                  setProposedDeliveryTime("");
+                }}
               />
             </div>
             <div className="space-y-1.5">
@@ -397,7 +408,7 @@ export function TimeEditor({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {getWindowsForDate(proposedDeliveryDate, { excludePast: false }).map((w) => (
+                  {proposedDeliveryWindows.map((w) => (
                     <SelectItem key={w.value} value={w.value}>
                       {w.label}
                     </SelectItem>

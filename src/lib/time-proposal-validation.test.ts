@@ -7,7 +7,9 @@ import {
   buildSaveProposedTimePayload,
   canAdvanceToStatus,
   hasCompleteProposedTime,
+  hasRecordedPayment,
   isDeliveryNotBeforePickup,
+  isFutureStoreWindow,
   isPreLifecycle,
   isValidStoreWindow,
   proposedScheduleMatchesPreferred,
@@ -58,6 +60,31 @@ describe("isValidStoreWindow", () => {
   it("rejects invalid seconds, without throwing", () => {
     expect(() => isValidStoreWindow(PICKUP_DATE, "18:00:99")).not.toThrow();
     expect(isValidStoreWindow(PICKUP_DATE, "18:00:99")).toBe(false);
+  });
+});
+
+describe("isFutureStoreWindow", () => {
+  const NOW = new Date("2026-09-11T19:30:00Z"); // 3:30 PM in Brooklyn
+
+  it("accepts a later window today", () => {
+    expect(isFutureStoreWindow("2026-09-11", "16:00", NOW)).toBe(true);
+  });
+
+  it("rejects a window that has already started today", () => {
+    expect(isFutureStoreWindow("2026-09-11", "15:00", NOW)).toBe(false);
+  });
+
+  it("rejects a past date even though it is a normal store window", () => {
+    expect(isFutureStoreWindow("2026-09-10", "18:00", NOW)).toBe(false);
+  });
+
+  it("accepts a valid window on a future date, including Postgres seconds", () => {
+    expect(isFutureStoreWindow("2026-09-12", "09:00:00", NOW)).toBe(true);
+  });
+
+  it("rejects the current window at its exact start boundary", () => {
+    const exactlyFourPm = new Date("2026-09-11T20:00:00Z");
+    expect(isFutureStoreWindow("2026-09-11", "16:00", exactlyFourPm)).toBe(false);
   });
 });
 
@@ -505,12 +532,16 @@ describe("canAdvanceToStatus", () => {
     confirmed_pickup_time: "10:00",
     confirmed_delivery_date: DELIVERY_DATE,
     confirmed_delivery_time: "09:00",
+    paid: true,
+    payment_method: "cash" as const,
   };
   const EMPTY_SCHEDULE = {
     confirmed_pickup_date: null,
     confirmed_pickup_time: null,
     confirmed_delivery_date: null,
     confirmed_delivery_time: null,
+    paid: false,
+    payment_method: null,
   };
   const UNGATED_STATUSES: BookingStatus[] = ["pending", "cancelled"];
   const GATED_STATUSES: BookingStatus[] = ["confirmed", "picked_up", "ready_for_delivery", "completed"];
@@ -557,6 +588,23 @@ describe("canAdvanceToStatus", () => {
     }
   });
 
+  it("completed requires a recorded Cash or Zelle payment", () => {
+    expect(canAdvanceToStatus("completed", { ...COMPLETE_SCHEDULE, paid: false })).toBe(false);
+    expect(
+      canAdvanceToStatus("completed", { ...COMPLETE_SCHEDULE, paid: true, payment_method: null })
+    ).toBe(false);
+    expect(
+      canAdvanceToStatus("completed", { ...COMPLETE_SCHEDULE, paid: true, payment_method: "zelle" })
+    ).toBe(true);
+  });
+
+  it("payment does not block cancellation or the earlier lifecycle statuses", () => {
+    const unpaidCompleteSchedule = { ...COMPLETE_SCHEDULE, paid: false, payment_method: null };
+    for (const status of ["pending", "confirmed", "picked_up", "ready_for_delivery", "cancelled"] as const) {
+      expect(canAdvanceToStatus(status, unpaidCompleteSchedule)).toBe(true);
+    }
+  });
+
   it("every partial (incomplete) four-field combination is rejected for every gated status", () => {
     const fieldKeys = [
       "confirmed_pickup_date",
@@ -573,6 +621,8 @@ describe("canAdvanceToStatus", () => {
         confirmed_pickup_time: bitmask & 2 ? "10:00" : null,
         confirmed_delivery_date: bitmask & 4 ? DELIVERY_DATE : null,
         confirmed_delivery_time: bitmask & 8 ? "09:00" : null,
+        paid: true,
+        payment_method: "cash" as const,
       };
       const isComplete = fieldKeys.every((key) => schedule[key] !== null);
 
@@ -580,6 +630,16 @@ describe("canAdvanceToStatus", () => {
         expect(canAdvanceToStatus(status, schedule)).toBe(isComplete);
       }
     }
+  });
+});
+
+describe("hasRecordedPayment", () => {
+  it("requires the paid flag and a supported method together", () => {
+    expect(hasRecordedPayment({ paid: true, payment_method: "cash" })).toBe(true);
+    expect(hasRecordedPayment({ paid: true, payment_method: "zelle" })).toBe(true);
+    expect(hasRecordedPayment({ paid: true, payment_method: null })).toBe(false);
+    expect(hasRecordedPayment({ paid: false, payment_method: "cash" })).toBe(false);
+    expect(hasRecordedPayment({ paid: false, payment_method: null })).toBe(false);
   });
 });
 

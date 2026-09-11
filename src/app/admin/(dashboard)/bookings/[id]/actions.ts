@@ -19,6 +19,7 @@ import {
   buildClearProposedTimePayload,
   buildSaveProposedTimePayload,
   hasCompleteProposedTime,
+  isFutureStoreWindow,
   isPreLifecycle,
   validatePreferredTimeForServiceType,
   validateProposedTime,
@@ -248,10 +249,9 @@ const proposedDeliveryOnlyTimeSchema = z.object({
  * unmodified for as long as the replacement remains merely proposed.
  * Status is intentionally left untouched either way, so a delivery
  * reschedule can never move a booking backward out of Picked Up/Ready for
- * Delivery. Reuses validateProposedTime (not a new, stricter check) so the
- * same store-window/chronological rules — and the same broader staff
- * discretion that already allows an early third-day Dry Cleaning delivery
- * — apply here exactly as they do pre-pickup.
+ * Delivery. The normal store-window/chronological checks still apply, and
+ * this delivery-only path additionally rejects dates or windows that have
+ * already started because an expired replacement cannot be proposed now.
  */
 export async function saveProposedDeliveryTime(bookingId: string, input: unknown) {
   const user = await requireAdmin();
@@ -295,6 +295,15 @@ export async function saveProposedDeliveryTime(bookingId: string, input: unknown
   });
   if (validationError) {
     return { error: validationError };
+  }
+
+  if (
+    !isFutureStoreWindow(
+      parsed.data.confirmedDeliveryDate,
+      parsed.data.confirmedDeliveryTime
+    )
+  ) {
+    return { error: "Choose a delivery window that has not started yet. 请选择尚未开始的送件时段。" };
   }
 
   const { error } = await supabase
@@ -352,15 +361,20 @@ export async function saveQuote(bookingId: string, input: unknown) {
     user.id
   );
 
-  const { error } = await supabase.from("bookings").update(payload).eq("id", bookingId);
+  const { data: updatedBooking, error } = await supabase
+    .from("bookings")
+    .update(payload)
+    .eq("id", bookingId)
+    .select("quote_total_cents")
+    .single();
 
-  if (error) {
+  if (error || !updatedBooking) {
     console.error("Save quote failed:", error);
     return { error: "Something went wrong updating that booking." };
   }
 
   revalidateBookingPaths(bookingId);
-  return { error: null };
+  return { error: null, quoteTotalCents: updatedBooking.quote_total_cents };
 }
 
 export async function markQuoteSent(bookingId: string) {

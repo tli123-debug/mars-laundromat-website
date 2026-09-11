@@ -21,8 +21,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { BOOKING_STATUS_STYLES } from "@/lib/booking-status-styles";
 import { cn } from "@/lib/utils";
-import { hasCompleteProposedTime, STATUSES_REQUIRING_CONFIRMED_SCHEDULE } from "@/lib/time-proposal-validation";
-import type { BookingStatus } from "@/types/database.types";
+import {
+  canAdvanceToStatus,
+  hasCompleteProposedTime,
+  hasRecordedPayment,
+} from "@/lib/time-proposal-validation";
+import type { BookingStatus, PaymentMethod } from "@/types/database.types";
 import { updateBookingStatus } from "./actions";
 
 const STATUS_OPTIONS: { value: BookingStatus; label: string }[] = [
@@ -41,6 +45,8 @@ export function StatusSelect({
   confirmedPickupTime,
   confirmedDeliveryDate,
   confirmedDeliveryTime,
+  paid,
+  paymentMethod,
 }: {
   bookingId: string;
   status: BookingStatus;
@@ -48,6 +54,8 @@ export function StatusSelect({
   confirmedPickupTime: string | null;
   confirmedDeliveryDate: string | null;
   confirmedDeliveryTime: string | null;
+  paid: boolean;
+  paymentMethod: PaymentMethod | null;
 }) {
   const [isPending, startTransition] = useTransition();
   const [confirmingCancel, setConfirmingCancel] = useState(false);
@@ -57,6 +65,15 @@ export function StatusSelect({
     confirmed_delivery_date: confirmedDeliveryDate,
     confirmed_delivery_time: confirmedDeliveryTime,
   });
+  const hasPayment = hasRecordedPayment({ paid, payment_method: paymentMethod });
+  const statusPrerequisites = {
+    confirmed_pickup_date: confirmedPickupDate,
+    confirmed_pickup_time: confirmedPickupTime,
+    confirmed_delivery_date: confirmedDeliveryDate,
+    confirmed_delivery_time: confirmedDeliveryTime,
+    paid,
+    payment_method: paymentMethod,
+  };
 
   function applyChange(next: BookingStatus) {
     startTransition(async () => {
@@ -88,7 +105,7 @@ export function StatusSelect({
             <SelectItem
               key={option.value}
               value={option.value}
-              disabled={!hasConfirmedSchedule && STATUSES_REQUIRING_CONFIRMED_SCHEDULE.includes(option.value)}
+              disabled={!canAdvanceToStatus(option.value, statusPrerequisites)}
               className={BOOKING_STATUS_STYLES[option.value].item}
             >
               {option.label}
@@ -97,9 +114,13 @@ export function StatusSelect({
         </SelectContent>
       </Select>
       {!hasConfirmedSchedule && (
-        <p className="max-w-[180px] text-xs text-muted-foreground">
-          Confirm the pickup and delivery schedule to unlock further status changes.
-          请先确认取件和送件时间以解锁更多状态选项。
+        <p className="max-w-[190px] whitespace-normal break-words text-xs leading-snug text-muted-foreground">
+          Confirm both times to unlock later statuses. 确认取件和送件时间后可更改后续状态。
+        </p>
+      )}
+      {hasConfirmedSchedule && !hasPayment && status !== "completed" && (
+        <p className="max-w-[190px] whitespace-normal break-words text-xs leading-snug text-muted-foreground">
+          Record Cash or Zelle payment before completing. 完成前请记录现金或 Zelle 付款。
         </p>
       )}
 

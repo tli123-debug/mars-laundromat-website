@@ -114,8 +114,15 @@ export function BookingCard({ booking }: { booking: BookingRow }) {
             confirmedPickupTime={booking.confirmed_pickup_time}
             confirmedDeliveryDate={booking.confirmed_delivery_date}
             confirmedDeliveryTime={booking.confirmed_delivery_time}
+            paid={booking.paid}
+            paymentMethod={booking.payment_method}
           />
-          <PaymentControl bookingId={booking.id} paid={booking.paid} paymentMethod={booking.payment_method} />
+          <PaymentControl
+            bookingId={booking.id}
+            paid={booking.paid}
+            paymentMethod={booking.payment_method}
+            status={booking.status}
+          />
         </div>
       </div>
 

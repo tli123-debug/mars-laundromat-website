@@ -43,6 +43,42 @@ function formatDate(dateStr: string | null) {
   });
 }
 
+function BookingWindowCell({
+  requestedDate,
+  requestedTime,
+  confirmedDate,
+  confirmedTime,
+  status,
+}: {
+  requestedDate: string | null;
+  requestedTime: string | null;
+  confirmedDate: string | null;
+  confirmedTime: string | null;
+  status: BookingRow["status"];
+}) {
+  const hasUpdatedWindow = Boolean(confirmedDate && confirmedTime);
+  const date = hasUpdatedWindow ? confirmedDate : requestedDate;
+  const time = hasUpdatedWindow ? confirmedTime : requestedTime;
+
+  if (!date || !time) {
+    return <span className="text-sm text-muted-foreground">—</span>;
+  }
+
+  const label = hasUpdatedWindow
+    ? status === "pending"
+      ? "Proposed 建议"
+      : "Confirmed 已确认"
+    : "Requested 客户请求";
+
+  return (
+    <div>
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div>{formatDate(date)}</div>
+      <div className="text-sm text-muted-foreground">{windowLabel(time)}</div>
+    </div>
+  );
+}
+
 function first(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -139,8 +175,8 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Status</TableHead>
-              <TableHead>Paid</TableHead>
+              <TableHead className="min-w-[210px]">Status</TableHead>
+              <TableHead className="min-w-[210px]">Paid</TableHead>
               <TableHead className="min-w-[200px]">Customer</TableHead>
               <TableHead className="min-w-[140px]">Pickup 取件</TableHead>
               <TableHead className="min-w-[140px]">Delivery 送件</TableHead>
@@ -162,7 +198,7 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
             )}
             {bookings.map((booking) => (
               <TableRow key={booking.id}>
-                <TableCell>
+                <TableCell className="align-top">
                   <StatusSelect
                     bookingId={booking.id}
                     status={booking.status}
@@ -170,13 +206,16 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
                     confirmedPickupTime={booking.confirmed_pickup_time}
                     confirmedDeliveryDate={booking.confirmed_delivery_date}
                     confirmedDeliveryTime={booking.confirmed_delivery_time}
+                    paid={booking.paid}
+                    paymentMethod={booking.payment_method}
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className="align-top">
                   <PaymentControl
                     bookingId={booking.id}
                     paid={booking.paid}
                     paymentMethod={booking.payment_method}
+                    status={booking.status}
                   />
                 </TableCell>
                 <TableCell>
@@ -199,22 +238,22 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div>{formatDate(booking.preferred_pickup_date)}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {windowLabel(booking.preferred_pickup_time)}
-                  </div>
+                  <BookingWindowCell
+                    requestedDate={booking.preferred_pickup_date}
+                    requestedTime={booking.preferred_pickup_time}
+                    confirmedDate={booking.confirmed_pickup_date}
+                    confirmedTime={booking.confirmed_pickup_time}
+                    status={booking.status}
+                  />
                 </TableCell>
                 <TableCell>
-                  {booking.preferred_delivery_date ? (
-                    <>
-                      <div>{formatDate(booking.preferred_delivery_date)}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {windowLabel(booking.preferred_delivery_time)}
-                      </div>
-                    </>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">—</span>
-                  )}
+                  <BookingWindowCell
+                    requestedDate={booking.preferred_delivery_date}
+                    requestedTime={booking.preferred_delivery_time}
+                    confirmedDate={booking.confirmed_delivery_date}
+                    confirmedTime={booking.confirmed_delivery_time}
+                    status={booking.status}
+                  />
                 </TableCell>
                 <TableCell className="max-w-[320px] whitespace-normal break-words">
                   <span className="block text-sm text-muted-foreground">

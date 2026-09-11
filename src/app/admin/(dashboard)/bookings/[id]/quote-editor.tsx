@@ -30,6 +30,8 @@ const QUOTE_STATUS_LABEL: Record<BookingRow["quote_status"], string> = {
 
 export function QuoteEditor({ booking }: { booking: BookingRow }) {
   const [isPending, startTransition] = useTransition();
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [savedQuoteTotalCents, setSavedQuoteTotalCents] = useState(booking.quote_total_cents);
 
   const includesWashAndFold = serviceTypeIncludesWashAndFold(booking.service_type);
   const includesDryCleaning = serviceTypeIncludesDryCleaning(booking.service_type);
@@ -121,8 +123,15 @@ export function QuoteEditor({ booking }: { booking: BookingRow }) {
         surchargeAmountCents,
         surchargeNotes: surchargeNotes.trim() || undefined,
       });
-      if (result.error) toast.error(result.error);
-      else toast.success("Quote saved as draft.");
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        if ("quoteTotalCents" in result && result.quoteTotalCents !== undefined) {
+          setSavedQuoteTotalCents(result.quoteTotalCents);
+        }
+        setHasUnsavedChanges(false);
+        toast.success("Quote saved as draft.");
+      }
     });
   }
 
@@ -153,7 +162,10 @@ export function QuoteEditor({ booking }: { booking: BookingRow }) {
               min="0"
               step="0.1"
               value={weight}
-              onChange={(e) => setWeight(e.target.value)}
+              onChange={(e) => {
+                setWeight(e.target.value);
+                setHasUnsavedChanges(true);
+              }}
             />
           </div>
         )}
@@ -162,7 +174,10 @@ export function QuoteEditor({ booking }: { booking: BookingRow }) {
             <Checkbox
               id="same-day-approved"
               checked={sameDayApproved}
-              onCheckedChange={(checked) => setSameDayApproved(checked === true)}
+              onCheckedChange={(checked) => {
+                setSameDayApproved(checked === true);
+                setHasUnsavedChanges(true);
+              }}
               disabled={!isSameDay}
             />
             <Label htmlFor="same-day-approved">
@@ -181,7 +196,10 @@ export function QuoteEditor({ booking }: { booking: BookingRow }) {
               step="0.01"
               placeholder="0.00"
               value={dryCleaningSubtotal}
-              onChange={(e) => setDryCleaningSubtotal(e.target.value)}
+              onChange={(e) => {
+                setDryCleaningSubtotal(e.target.value);
+                setHasUnsavedChanges(true);
+              }}
             />
           </div>
         )}
@@ -191,7 +209,10 @@ export function QuoteEditor({ booking }: { booking: BookingRow }) {
             <Textarea
               id="dry-cleaning-notes"
               value={dryCleaningNotes}
-              onChange={(e) => setDryCleaningNotes(e.target.value)}
+              onChange={(e) => {
+                setDryCleaningNotes(e.target.value);
+                setHasUnsavedChanges(true);
+              }}
             />
           </div>
         )}
@@ -204,7 +225,10 @@ export function QuoteEditor({ booking }: { booking: BookingRow }) {
             step="0.01"
             placeholder="0.00"
             value={surchargeAmount}
-            onChange={(e) => setSurchargeAmount(e.target.value)}
+            onChange={(e) => {
+              setSurchargeAmount(e.target.value);
+              setHasUnsavedChanges(true);
+            }}
           />
         </div>
         <div className="space-y-1.5">
@@ -212,7 +236,10 @@ export function QuoteEditor({ booking }: { booking: BookingRow }) {
           <Textarea
             id="surcharge-notes"
             value={surchargeNotes}
-            onChange={(e) => setSurchargeNotes(e.target.value)}
+            onChange={(e) => {
+              setSurchargeNotes(e.target.value);
+              setHasUnsavedChanges(true);
+            }}
           />
         </div>
       </div>
@@ -250,27 +277,42 @@ export function QuoteEditor({ booking }: { booking: BookingRow }) {
         <Button size="sm" disabled={isPending} onClick={handleSave}>
           Save Quote 保存报价
         </Button>
-        {booking.quote_total_cents !== null && booking.quote_total_cents > 0 && (
-          <Button asChild size="sm" variant="outline">
-            <a
-              href={bookingQuoteTextHref(
-                booking.phone,
-                booking.name,
-                booking.quote_total_cents,
-                booking.confirmed_delivery_date && booking.confirmed_delivery_time
-                  ? { date: booking.confirmed_delivery_date, time: booking.confirmed_delivery_time }
-                  : null
-              )}
-            >
+        {savedQuoteTotalCents !== null && savedQuoteTotalCents > 0 &&
+          (hasUnsavedChanges ? (
+            <Button size="sm" variant="outline" disabled>
               Text Quote 发报价短信
-            </a>
-          </Button>
-        )}
-        <Button size="sm" variant="outline" disabled={isPending || !canSend} onClick={handleMarkSent}>
+            </Button>
+          ) : (
+            <Button asChild size="sm" variant="outline">
+              <a
+                href={bookingQuoteTextHref(
+                  booking.phone,
+                  booking.name,
+                  savedQuoteTotalCents,
+                  booking.confirmed_delivery_date && booking.confirmed_delivery_time
+                    ? { date: booking.confirmed_delivery_date, time: booking.confirmed_delivery_time }
+                    : null
+                )}
+              >
+                Text Quote 发报价短信
+              </a>
+            </Button>
+          ))}
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={isPending || hasUnsavedChanges || !canSend}
+          onClick={handleMarkSent}
+        >
           Mark Quote as Sent 标记报价已发送
         </Button>
         <span className="text-sm text-muted-foreground">{QUOTE_STATUS_LABEL[booking.quote_status]}</span>
       </div>
+      {hasUnsavedChanges && (
+        <p className="text-xs font-medium text-amber-800">
+          Save your changes before texting or marking the quote sent. 发送短信或标记已发送前，请先保存更改。
+        </p>
+      )}
       <p className="text-xs text-muted-foreground">
         Text Quote opens a prefilled message in your phone&apos;s texting app — nothing is sent
         automatically. Review it, send it there, then come back and mark it sent here.

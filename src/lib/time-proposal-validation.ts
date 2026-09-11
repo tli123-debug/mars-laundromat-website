@@ -1,5 +1,6 @@
 import {
   getSameDayEligibleWindows,
+  getBrooklynToday,
   getStandardFlexibleDeliveryWindows,
   getWindowsForDate,
   normalizeStoredTime,
@@ -8,7 +9,7 @@ import {
   addDays,
 } from "@/lib/booking-hours";
 import { isValidDryCleaningDeliveryDate } from "@/lib/dry-cleaning-schedule";
-import type { BookingStatus, ServiceSpeed, ServiceType } from "@/types/database.types";
+import type { BookingStatus, PaymentMethod, ServiceSpeed, ServiceType } from "@/types/database.types";
 
 function timeValueToMinutes(time: string): number {
   const [hours, minutes] = time.split(":").map(Number);
@@ -39,6 +40,18 @@ export function isValidStoreWindow(date: string, time: string): boolean {
   const normalized = normalizeStoredTime(time);
   if (!normalized) return false;
   return getWindowsForDate(date, { excludePast: false }).some((w) => w.value === normalized);
+}
+
+/**
+ * The stricter window check used only when staff replace a delivery after
+ * pickup. Unlike the general manual-time validator above, a replacement
+ * delivery must still be in the future: past dates and windows that have
+ * already started today are not actionable proposals.
+ */
+export function isFutureStoreWindow(date: string, time: string, now: Date = new Date()): boolean {
+  const normalized = normalizeStoredTime(time);
+  if (!normalized || date < getBrooklynToday(now)) return false;
+  return getWindowsForDate(date, { now }).some((window) => window.value === normalized);
 }
 
 /**
@@ -201,6 +214,14 @@ export const STATUSES_REQUIRING_CONFIRMED_SCHEDULE: readonly BookingStatus[] = [
   "completed",
 ];
 
+/** A completed order must have both the paid flag and a real payment method. */
+export function hasRecordedPayment(booking: {
+  paid: boolean;
+  payment_method: PaymentMethod | null;
+}): boolean {
+  return booking.paid && (booking.payment_method === "cash" || booking.payment_method === "zelle");
+}
+
 /**
  * Whether a booking may advance to `targetStatus` given its current
  * confirmed-schedule completeness. Reuses hasCompleteProposedTime — the
@@ -215,10 +236,14 @@ export function canAdvanceToStatus(
     confirmed_pickup_time: string | null;
     confirmed_delivery_date: string | null;
     confirmed_delivery_time: string | null;
+    paid: boolean;
+    payment_method: PaymentMethod | null;
   }
 ): boolean {
   if (!STATUSES_REQUIRING_CONFIRMED_SCHEDULE.includes(targetStatus)) return true;
-  return hasCompleteProposedTime(booking);
+  if (!hasCompleteProposedTime(booking)) return false;
+  if (targetStatus === "completed") return hasRecordedPayment(booking);
+  return true;
 }
 
 /**

@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { PaymentMethod } from "@/types/database.types";
+import type { BookingStatus, PaymentMethod } from "@/types/database.types";
 import { markBookingPaid, markBookingUnpaid } from "./actions";
 
 const METHOD_LABEL: Record<PaymentMethod, string> = {
@@ -19,10 +19,12 @@ export function PaymentControl({
   bookingId,
   paid,
   paymentMethod,
+  status,
 }: {
   bookingId: string;
   paid: boolean;
   paymentMethod: PaymentMethod | null;
+  status: BookingStatus;
 }) {
   const [isPending, startTransition] = useTransition();
 
@@ -48,9 +50,11 @@ export function PaymentControl({
         <Badge className="border-green-200 bg-green-50 text-green-900">
           Paid 已付款{paymentMethod && ` · ${METHOD_LABEL[paymentMethod]}`}
         </Badge>
-        <Button variant="outline" size="sm" disabled={isPending} onClick={handleMarkUnpaid}>
-          Mark Unpaid 标记未付款
-        </Button>
+        {status !== "completed" && (
+          <Button variant="outline" size="sm" disabled={isPending} onClick={handleMarkUnpaid}>
+            Mark Unpaid 标记未付款
+          </Button>
+        )}
       </div>
     );
   }
