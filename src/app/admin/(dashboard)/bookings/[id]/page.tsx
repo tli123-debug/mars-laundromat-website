@@ -112,7 +112,14 @@ export default async function AdminBookingDetailPage(props: PageProps<"/admin/bo
       <section className="rounded-xl border border-border bg-background p-4">
         <h2 className="font-display text-base font-semibold">Status & Payment 状态与付款</h2>
         <div className="mt-3 flex flex-wrap items-center gap-4">
-          <StatusSelect bookingId={booking.id} status={booking.status} />
+          <StatusSelect
+            bookingId={booking.id}
+            status={booking.status}
+            confirmedPickupDate={booking.confirmed_pickup_date}
+            confirmedPickupTime={booking.confirmed_pickup_time}
+            confirmedDeliveryDate={booking.confirmed_delivery_date}
+            confirmedDeliveryTime={booking.confirmed_delivery_time}
+          />
           <PaymentControl bookingId={booking.id} paid={booking.paid} paymentMethod={booking.payment_method} />
         </div>
       </section>

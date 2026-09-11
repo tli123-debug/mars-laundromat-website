@@ -19,6 +19,7 @@ import {
   buildClearProposedTimePayload,
   buildSaveProposedTimePayload,
   hasCompleteProposedTime,
+  isPreLifecycle,
   validatePreferredTimeForServiceType,
   validateProposedTime,
 } from "@/lib/time-proposal-validation";
@@ -32,6 +33,15 @@ import { translateToChinese } from "@/lib/translate/translate-to-chinese";
 
 const SERVICE_TYPES = ["wash_and_fold", "dry_cleaning", "both"] as const;
 const serviceTypeSchema = z.enum(SERVICE_TYPES);
+
+// Once a booking is picked_up or later, pickup is historical (Correction 3:
+// scheduling-safety improvement) — approveRequestedTime/saveProposedTime/
+// clearProposedTime all write (or clear) the pickup fields together with
+// delivery, so none of them may run past that point. picked_up/
+// ready_for_delivery instead get the delivery-only reschedule path
+// (saveProposedDeliveryTime, below); completed/cancelled get no scheduling
+// edits at all.
+const SCHEDULE_LOCKED_ERROR = "This booking's schedule can no longer be edited this way. 此预约的时间安排无法再通过此方式更改。";
 
 function revalidateBookingPaths(bookingId: string) {
   revalidatePath("/admin/today");
@@ -53,6 +63,10 @@ export async function approveRequestedTime(bookingId: string) {
 
   if (fetchError || !booking) {
     return { error: "Couldn't find that booking." };
+  }
+
+  if (!isPreLifecycle(booking.status)) {
+    return { error: SCHEDULE_LOCKED_ERROR };
   }
 
   if (!booking.preferred_delivery_date || !booking.preferred_delivery_time) {
@@ -128,6 +142,10 @@ export async function saveProposedTime(bookingId: string, input: unknown) {
     return { error: "Couldn't find that booking." };
   }
 
+  if (!isPreLifecycle(booking.status)) {
+    return { error: SCHEDULE_LOCKED_ERROR };
+  }
+
   const payload = buildSaveProposedTimePayload(parsed.data, booking.status, user.id);
   const { error } = await supabase.from("bookings").update(payload).eq("id", bookingId);
 
@@ -192,11 +210,106 @@ export async function clearProposedTime(bookingId: string) {
     return { error: "Couldn't find that booking." };
   }
 
+  if (!isPreLifecycle(booking.status)) {
+    return { error: SCHEDULE_LOCKED_ERROR };
+  }
+
   const payload = buildClearProposedTimePayload(booking.status, user.id);
   const { error } = await supabase.from("bookings").update(payload).eq("id", bookingId);
 
   if (error) {
     console.error("Clear proposed time failed:", error);
+    return { error: "Something went wrong updating that booking." };
+  }
+
+  revalidateBookingPaths(bookingId);
+  return { error: null };
+}
+
+const proposedDeliveryOnlyTimeSchema = z.object({
+  confirmedDeliveryDate: z.iso.date(),
+  confirmedDeliveryTime: z.string().min(1),
+});
+
+/**
+ * The post-pickup, delivery-only counterpart to saveProposedTime — see
+ * Correction 3. Only reachable while the booking is picked_up or
+ * ready_for_delivery: pickup is historical by then, so this writes the
+ * booking's own CURRENT confirmed_pickup_* straight back unchanged
+ * (re-fetched here, never trusted from the browser) alongside the new
+ * delivery time, preserving the all-four-fields-together invariant without
+ * ever letting pickup actually change. Deliberately a single atomic
+ * "propose and apply" step, not a separate save-then-confirm pair like the
+ * pre-pickup flow: staff are expected to text the customer with the
+ * proposed delivery FIRST (via buildProposedDeliveryMessage(), built from
+ * whatever is currently typed into the form — nothing saved yet) and only
+ * call this once the customer has actually agreed by phone or text, which
+ * is exactly what keeps the current confirmed delivery active and
+ * unmodified for as long as the replacement remains merely proposed.
+ * Status is intentionally left untouched either way, so a delivery
+ * reschedule can never move a booking backward out of Picked Up/Ready for
+ * Delivery. Reuses validateProposedTime (not a new, stricter check) so the
+ * same store-window/chronological rules — and the same broader staff
+ * discretion that already allows an early third-day Dry Cleaning delivery
+ * — apply here exactly as they do pre-pickup.
+ */
+export async function saveProposedDeliveryTime(bookingId: string, input: unknown) {
+  const user = await requireAdmin();
+
+  const parsed = proposedDeliveryOnlyTimeSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Please fill in a complete delivery time." };
+  }
+
+  const supabase = await createClient();
+  const { data: booking, error: fetchError } = await supabase
+    .from("bookings")
+    .select("status, confirmed_pickup_date, confirmed_pickup_time")
+    .eq("id", bookingId)
+    .single();
+
+  if (fetchError || !booking) {
+    return { error: "Couldn't find that booking." };
+  }
+
+  if (booking.status !== "picked_up" && booking.status !== "ready_for_delivery") {
+    return {
+      error: "Delivery can only be rescheduled after pickup, and before the order is marked completed.",
+    };
+  }
+
+  if (!booking.confirmed_pickup_date || !booking.confirmed_pickup_time) {
+    // Shouldn't be reachable once Correction 1's status gate is in place
+    // (picked_up already requires a complete confirmed schedule to reach),
+    // but a historical row from before that gate existed could still land
+    // here — fail clearly rather than writing a delivery time with no
+    // pickup record behind it.
+    return { error: "This booking has no confirmed pickup time on record to keep." };
+  }
+
+  const validationError = validateProposedTime({
+    confirmedPickupDate: booking.confirmed_pickup_date,
+    confirmedPickupTime: booking.confirmed_pickup_time,
+    confirmedDeliveryDate: parsed.data.confirmedDeliveryDate,
+    confirmedDeliveryTime: parsed.data.confirmedDeliveryTime,
+  });
+  if (validationError) {
+    return { error: validationError };
+  }
+
+  const { error } = await supabase
+    .from("bookings")
+    .update({
+      confirmed_pickup_date: booking.confirmed_pickup_date,
+      confirmed_pickup_time: booking.confirmed_pickup_time,
+      confirmed_delivery_date: parsed.data.confirmedDeliveryDate,
+      confirmed_delivery_time: parsed.data.confirmedDeliveryTime,
+      updated_by: user.id,
+    })
+    .eq("id", bookingId);
+
+  if (error) {
+    console.error("Save proposed delivery time failed:", error);
     return { error: "Something went wrong updating that booking." };
   }
 

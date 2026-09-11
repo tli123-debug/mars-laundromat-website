@@ -118,6 +118,13 @@ export function bookingQuoteTextHref(
  * price: the total isn't known until the order is weighed/counted at the
  * store, which is exactly what this message tells the customer to expect
  * next — see buildQuoteTextMessage() for the separate, later quote text.
+ *
+ * The availability/handoff paragraph is the owner-approved replacement for
+ * two separate optional "Confirm Pickup/Delivery Availability" assisted
+ * texts — folding the expectation into the one message every customer
+ * already gets is more reliable than an easy-to-skip optional step later,
+ * and states the unattended-handoff policy in writing at the earliest
+ * natural touchpoint.
  */
 export function buildPickupConfirmationMessage(
   customerName: string,
@@ -130,6 +137,9 @@ export function buildPickupConfirmationMessage(
     `Your ${SERVICE_TYPE_CUSTOMER_LABELS[serviceType]} pickup is confirmed for ` +
     `${formatMessageDate(confirmedPickup.date)}, ${windowLabel(confirmedPickup.time)}.\n` +
     `We'll deliver it back ${formatMessageDate(confirmedDelivery.date)}, ${windowLabel(confirmedDelivery.time)}.` +
+    `\n\nPlease make sure someone or a doorman is AVAILABLE to hand-off and receive your laundry ` +
+    `during that window — if your plans change, call or text us to pick a different time. ` +
+    `We're not able to leave items unattended unless we've specifically agreed on it.` +
     `\n\nWe'll text your final total once we've received your order and finished weighing/counting it.` +
     `\n\nPlease reply if you have any questions.`
   );
@@ -147,6 +157,84 @@ export function bookingPickupConfirmationTextHref(
     phone,
     buildPickupConfirmationMessage(customerName, serviceType, confirmedPickup, confirmedDelivery)
   );
+}
+
+/**
+ * The "we couldn't do exactly what you asked, here's an alternative"
+ * message — sent after staff has saved a complete proposed schedule that
+ * genuinely differs from what the customer originally requested (the
+ * caller, TimeEditor, is responsible for only showing this once
+ * proposedScheduleMatchesPreferred() in time-proposal-validation.ts says
+ * false; if the proposal matches what was requested, Approve Requested
+ * Time — and buildPickupConfirmationMessage() — is the right message
+ * instead). Both pickup and delivery are always listed, even if only one
+ * of the two actually changed, so the customer always sees the complete
+ * picture rather than having to infer what's still the same. This message
+ * only opens a prefilled draft for staff to review and send — it never
+ * sends automatically, confirms the schedule, or changes booking status;
+ * staff still click Mark Times Confirmed once the customer agrees.
+ */
+export function buildProposedScheduleMessage(
+  customerName: string,
+  proposedPickup: ConfirmedWindow,
+  proposedDelivery: ConfirmedWindow
+): string {
+  return (
+    `Hi ${customerName}, this is Mars Laundromat.\n\n` +
+    `We need to adjust the schedule you requested. Would the following work for you?\n\n` +
+    `Pickup: ${formatMessageDate(proposedPickup.date)}, ${windowLabel(proposedPickup.time)}\n` +
+    `Delivery: ${formatMessageDate(proposedDelivery.date)}, ${windowLabel(proposedDelivery.time)}` +
+    `\n\nPlease reply to confirm, or let us know what time would work better.`
+  );
+}
+
+/** SMS deep link for the assisted proposed-schedule text — see buildProposedScheduleMessage(). */
+export function bookingProposedScheduleTextHref(
+  phone: string,
+  customerName: string,
+  proposedPickup: ConfirmedWindow,
+  proposedDelivery: ConfirmedWindow
+): string {
+  return bookingSmsHref(phone, buildProposedScheduleMessage(customerName, proposedPickup, proposedDelivery));
+}
+
+/**
+ * The post-pickup, delivery-only reschedule message — pickup is already
+ * historical by this point (see Correction 3: pickup is locked once a
+ * booking is Picked Up or Ready for Delivery), so only the proposed
+ * delivery time is mentioned. Deliberately takes the proposed delivery
+ * window as a plain argument rather than reading it from the database: the
+ * whole point of this message is to ask the customer BEFORE the new
+ * delivery time is saved anywhere, so nothing here can come from a
+ * "confirmed" column — see saveProposedDeliveryTime() in
+ * bookings/[id]/actions.ts, which only writes the new delivery time after
+ * the customer has actually agreed.
+ *
+ * Carries the same availability/handoff reminder as
+ * buildPickupConfirmationMessage() (adapted to "receive," since there's no
+ * pickup/hand-off leg in a pure delivery reschedule) — otherwise a
+ * rescheduled delivery would never see that reminder again after the
+ * original one, tied to the now-superseded original window, already went
+ * out once at pickup confirmation.
+ */
+export function buildProposedDeliveryMessage(customerName: string, proposedDelivery: ConfirmedWindow): string {
+  return (
+    `Hi ${customerName}, this is Mars Laundromat.\n\n` +
+    `We need to adjust your delivery schedule. Would the following time work for you?\n\n` +
+    `Delivery: ${formatMessageDate(proposedDelivery.date)}, ${windowLabel(proposedDelivery.time)}` +
+    `\n\nPlease make sure someone or a doorman will be AVAILABLE to receive your laundry during ` +
+    `that window. We're not able to leave items unattended unless we've specifically agreed on it.` +
+    `\n\nPlease reply to confirm, or let us know what time would work better.`
+  );
+}
+
+/** SMS deep link for the assisted proposed-delivery text — see buildProposedDeliveryMessage(). */
+export function bookingProposedDeliveryTextHref(
+  phone: string,
+  customerName: string,
+  proposedDelivery: ConfirmedWindow
+): string {
+  return bookingSmsHref(phone, buildProposedDeliveryMessage(customerName, proposedDelivery));
 }
 
 /**

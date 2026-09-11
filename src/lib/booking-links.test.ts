@@ -3,10 +3,14 @@ import {
   bookingMapsHref,
   bookingPhoneHref,
   bookingPickupConfirmationTextHref,
+  bookingProposedDeliveryTextHref,
+  bookingProposedScheduleTextHref,
   bookingQuoteTextHref,
   bookingRecurringOfferTextHref,
   bookingSmsHref,
   buildPickupConfirmationMessage,
+  buildProposedDeliveryMessage,
+  buildProposedScheduleMessage,
   buildQuoteTextMessage,
   buildRecurringOfferMessage,
 } from "./booking-links";
@@ -190,6 +194,32 @@ describe("buildPickupConfirmationMessage", () => {
     expect(message).not.toContain("Zelle");
     expect(message).not.toContain("Cash");
   });
+
+  it("matches the exact owner-approved wording, including the availability/handoff-policy paragraph", () => {
+    const message = buildPickupConfirmationMessage("Jane Rivera", "wash_and_fold", pickup, delivery);
+    expect(message).toBe(
+      "Hi Jane Rivera, this is Mars Laundromat.\n\n" +
+        "Your Wash & Fold pickup is confirmed for Wed, Sep 2, 9:00 AM–10:00 AM.\n" +
+        "We'll deliver it back Thu, Sep 3, 6:00 PM–7:00 PM.\n\n" +
+        "Please make sure someone or a doorman is AVAILABLE to hand-off and receive your laundry " +
+        "during that window — if your plans change, call or text us to pick a different time. " +
+        "We're not able to leave items unattended unless we've specifically agreed on it.\n\n" +
+        "We'll text your final total once we've received your order and finished weighing/counting it.\n\n" +
+        "Please reply if you have any questions."
+    );
+  });
+
+  it("states the availability/handoff policy on its own paragraph, between the delivery line and the final-total line", () => {
+    const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
+    expect(message).toContain("We'll deliver it back Thu, Sep 3, 6:00 PM–7:00 PM.\n\nPlease make sure someone");
+    expect(message).toContain("agreed on it.\n\nWe'll text your final total");
+  });
+
+  it("names the unattended-handoff policy explicitly, covering both pickup hand-off and delivery receipt", () => {
+    const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
+    expect(message).toContain("someone or a doorman is AVAILABLE to hand-off and receive your laundry");
+    expect(message).toContain("We're not able to leave items unattended unless we've specifically agreed on it.");
+  });
 });
 
 describe("bookingPickupConfirmationTextHref", () => {
@@ -214,6 +244,117 @@ describe("bookingPickupConfirmationTextHref", () => {
     const decoded = decodeURIComponent(href.split("?body=")[1]);
     expect(decoded).toContain("9:00 AM–10:00 AM");
     expect(decoded).toContain("Please reply if you have any questions.");
+  });
+});
+
+describe("buildProposedScheduleMessage", () => {
+  const pickup = { date: "2026-09-02", time: "09:00" };
+  const delivery = { date: "2026-09-03", time: "18:00" };
+
+  it("matches the exact owner-approved wording and paragraph breaks", () => {
+    const message = buildProposedScheduleMessage("Jane Rivera", pickup, delivery);
+    expect(message).toBe(
+      "Hi Jane Rivera, this is Mars Laundromat.\n\n" +
+        "We need to adjust the schedule you requested. Would the following work for you?\n\n" +
+        "Pickup: Wed, Sep 2, 9:00 AM–10:00 AM\n" +
+        "Delivery: Thu, Sep 3, 6:00 PM–7:00 PM\n\n" +
+        "Please reply to confirm, or let us know what time would work better."
+    );
+  });
+
+  it("uses the customer's real name, not a placeholder", () => {
+    expect(buildProposedScheduleMessage("Wei Chen", pickup, delivery)).toMatch(/^Hi Wei Chen,/);
+  });
+
+  it("always includes both pickup and delivery, even when only one actually changed from the request", () => {
+    const message = buildProposedScheduleMessage("Jane", pickup, delivery);
+    expect(message).toContain("Pickup: Wed, Sep 2, 9:00 AM–10:00 AM");
+    expect(message).toContain("Delivery: Thu, Sep 3, 6:00 PM–7:00 PM");
+  });
+
+  it("invites a reply to confirm or propose something else, never a hard commitment", () => {
+    expect(buildProposedScheduleMessage("Jane", pickup, delivery)).toContain(
+      "Please reply to confirm, or let us know what time would work better."
+    );
+  });
+});
+
+describe("bookingProposedScheduleTextHref", () => {
+  const pickup = { date: "2026-09-02", time: "09:00" };
+  const delivery = { date: "2026-09-03", time: "18:00" };
+
+  it("combines the phone and message into one properly-encoded sms: link", () => {
+    const href = bookingProposedScheduleTextHref("(718) 555-0134", "Jane Rivera", pickup, delivery);
+    expect(href.startsWith("sms:7185550134?body=")).toBe(true);
+    const decoded = decodeURIComponent(href.split("?body=")[1]);
+    expect(decoded).toBe(buildProposedScheduleMessage("Jane Rivera", pickup, delivery));
+  });
+
+  it("preserves paragraph and line-break formatting through the encoded SMS link", () => {
+    const href = bookingProposedScheduleTextHref("7185550134", "Jane Rivera", pickup, delivery);
+    const decoded = decodeURIComponent(href.split("?body=")[1]);
+    expect(decoded).toContain("Mars Laundromat.\n\nWe need to adjust");
+    expect(decoded).toContain("Pickup: Wed, Sep 2, 9:00 AM–10:00 AM\nDelivery: Thu, Sep 3, 6:00 PM–7:00 PM");
+    expect(decoded).toContain("PM\n\nPlease reply to confirm");
+  });
+});
+
+describe("buildProposedDeliveryMessage", () => {
+  const delivery = { date: "2026-09-03", time: "18:00" };
+
+  it("matches the exact owner-approved wording, including the availability/handoff-policy line", () => {
+    const message = buildProposedDeliveryMessage("Jane Rivera", delivery);
+    expect(message).toBe(
+      "Hi Jane Rivera, this is Mars Laundromat.\n\n" +
+        "We need to adjust your delivery schedule. Would the following time work for you?\n\n" +
+        "Delivery: Thu, Sep 3, 6:00 PM–7:00 PM\n\n" +
+        "Please make sure someone or a doorman will be AVAILABLE to receive your laundry during " +
+        "that window. We're not able to leave items unattended unless we've specifically agreed on it.\n\n" +
+        "Please reply to confirm, or let us know what time would work better."
+    );
+  });
+
+  it("uses the customer's real name, not a placeholder", () => {
+    expect(buildProposedDeliveryMessage("Wei Chen", delivery)).toMatch(/^Hi Wei Chen,/);
+  });
+
+  it("never mentions pickup — pickup is already historical by the time this message is used", () => {
+    expect(buildProposedDeliveryMessage("Jane", delivery)).not.toContain("Pickup");
+    expect(buildProposedDeliveryMessage("Jane", delivery)).not.toContain("hand-off");
+  });
+
+  it("carries the same availability/handoff policy as buildPickupConfirmationMessage, so a rescheduled delivery is never left without the reminder", () => {
+    const message = buildProposedDeliveryMessage("Jane", delivery);
+    expect(message).toContain("AVAILABLE to receive your laundry");
+    expect(message).toContain("We're not able to leave items unattended unless we've specifically agreed on it.");
+  });
+});
+
+describe("bookingProposedDeliveryTextHref", () => {
+  const delivery = { date: "2026-09-03", time: "18:00" };
+
+  it("combines the phone and message into one properly-encoded sms: link", () => {
+    const href = bookingProposedDeliveryTextHref("(718) 555-0134", "Jane Rivera", delivery);
+    expect(href.startsWith("sms:7185550134?body=")).toBe(true);
+    const decoded = decodeURIComponent(href.split("?body=")[1]);
+    expect(decoded).toBe(buildProposedDeliveryMessage("Jane Rivera", delivery));
+  });
+
+  it("preserves paragraph and line-break formatting through the encoded SMS link", () => {
+    const href = bookingProposedDeliveryTextHref("7185550134", "Jane Rivera", delivery);
+    const decoded = decodeURIComponent(href.split("?body=")[1]);
+    expect(decoded).toContain("Mars Laundromat.\n\nWe need to adjust your delivery schedule");
+    expect(decoded).toContain("Delivery: Thu, Sep 3, 6:00 PM–7:00 PM\n\nPlease make sure someone");
+    expect(decoded).toContain("agreed on it.\n\nPlease reply to confirm");
+  });
+});
+
+describe("quote message remains unchanged by this task", () => {
+  it("buildQuoteTextMessage is untouched (Zelle/Venmo wording task, not this one)", () => {
+    const message = buildQuoteTextMessage("Jane Rivera", 4800);
+    expect(message).toContain("Cash, Zelle, or Venmo accepted.");
+    expect(message).toContain("Zelle: 917-881-2623");
+    expect(message).toContain("Venmo: @Yong-Li-234");
   });
 });
 

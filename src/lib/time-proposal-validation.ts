@@ -187,6 +187,71 @@ export function isPreLifecycle(status: BookingStatus): boolean {
   return status === "pending" || status === "confirmed";
 }
 
+/**
+ * Every status that requires a complete confirmed schedule to already
+ * exist before a booking may be advanced to it. pending and cancelled are
+ * deliberately absent — pending is the normal starting state before any
+ * schedule has been confirmed, and a booking may always be cancelled
+ * regardless of where scheduling negotiation stands.
+ */
+export const STATUSES_REQUIRING_CONFIRMED_SCHEDULE: readonly BookingStatus[] = [
+  "confirmed",
+  "picked_up",
+  "ready_for_delivery",
+  "completed",
+];
+
+/**
+ * Whether a booking may advance to `targetStatus` given its current
+ * confirmed-schedule completeness. Reuses hasCompleteProposedTime — the
+ * same "all four fields or none" completeness check already used to gate
+ * "Mark Times Confirmed" — rather than duplicating it, so the two notions
+ * of "is this schedule actually confirmed" can never drift apart.
+ */
+export function canAdvanceToStatus(
+  targetStatus: BookingStatus,
+  booking: {
+    confirmed_pickup_date: string | null;
+    confirmed_pickup_time: string | null;
+    confirmed_delivery_date: string | null;
+    confirmed_delivery_time: string | null;
+  }
+): boolean {
+  if (!STATUSES_REQUIRING_CONFIRMED_SCHEDULE.includes(targetStatus)) return true;
+  return hasCompleteProposedTime(booking);
+}
+
+/**
+ * Whether a staff-saved proposed schedule actually differs from what the
+ * customer originally requested — used to decide whether "Text Proposed
+ * Schedule" should appear at all. If staff re-saves the exact times the
+ * customer already asked for (effectively duplicating Approve Requested
+ * Time by hand), texting "we need to adjust your schedule" would be
+ * actively misleading since nothing changed; Approve Requested Time is the
+ * right action for that case instead. A booking with no preferred delivery
+ * on file (legacy/edge-case row) can never "match," since there is nothing
+ * to compare against — times are normalized before comparing since each of
+ * confirmed_* and preferred_* can independently come back from PostgREST
+ * as "HH:MM" or "HH:MM:SS".
+ */
+export function proposedScheduleMatchesPreferred(
+  preferred: {
+    pickupDate: string;
+    pickupTime: string;
+    deliveryDate: string | null;
+    deliveryTime: string | null;
+  },
+  confirmed: { pickupDate: string; pickupTime: string; deliveryDate: string; deliveryTime: string }
+): boolean {
+  if (!preferred.deliveryDate || !preferred.deliveryTime) return false;
+  return (
+    preferred.pickupDate === confirmed.pickupDate &&
+    normalizeStoredTime(preferred.pickupTime) === normalizeStoredTime(confirmed.pickupTime) &&
+    preferred.deliveryDate === confirmed.deliveryDate &&
+    normalizeStoredTime(preferred.deliveryTime) === normalizeStoredTime(confirmed.deliveryTime)
+  );
+}
+
 export function buildApproveTimePayload(
   preferred: { pickupDate: string; pickupTime: string; deliveryDate: string; deliveryTime: string },
   currentStatus: BookingStatus,

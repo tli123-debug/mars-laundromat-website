@@ -163,7 +163,14 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
             {bookings.map((booking) => (
               <TableRow key={booking.id}>
                 <TableCell>
-                  <StatusSelect bookingId={booking.id} status={booking.status} />
+                  <StatusSelect
+                    bookingId={booking.id}
+                    status={booking.status}
+                    confirmedPickupDate={booking.confirmed_pickup_date}
+                    confirmedPickupTime={booking.confirmed_pickup_time}
+                    confirmedDeliveryDate={booking.confirmed_delivery_date}
+                    confirmedDeliveryTime={booking.confirmed_delivery_time}
+                  />
                 </TableCell>
                 <TableCell>
                   <PaymentControl

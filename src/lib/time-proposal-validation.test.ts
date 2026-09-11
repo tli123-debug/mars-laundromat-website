@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { getWindowsForDate } from "@/lib/booking-hours";
+import type { BookingStatus } from "@/types/database.types";
 import {
   buildApproveTimePayload,
   buildClearProposedTimePayload,
   buildSaveProposedTimePayload,
+  canAdvanceToStatus,
   hasCompleteProposedTime,
   isDeliveryNotBeforePickup,
   isPreLifecycle,
   isValidStoreWindow,
+  proposedScheduleMatchesPreferred,
+  STATUSES_REQUIRING_CONFIRMED_SCHEDULE,
   validatePreferredTimeForServiceType,
   validateProposedTime,
 } from "./time-proposal-validation";
@@ -492,5 +496,173 @@ describe("post-pickup status preservation — build*Payload never move status on
         updated_by: "user-1",
       });
     }
+  });
+});
+
+describe("canAdvanceToStatus", () => {
+  const COMPLETE_SCHEDULE = {
+    confirmed_pickup_date: PICKUP_DATE,
+    confirmed_pickup_time: "10:00",
+    confirmed_delivery_date: DELIVERY_DATE,
+    confirmed_delivery_time: "09:00",
+  };
+  const EMPTY_SCHEDULE = {
+    confirmed_pickup_date: null,
+    confirmed_pickup_time: null,
+    confirmed_delivery_date: null,
+    confirmed_delivery_time: null,
+  };
+  const UNGATED_STATUSES: BookingStatus[] = ["pending", "cancelled"];
+  const GATED_STATUSES: BookingStatus[] = ["confirmed", "picked_up", "ready_for_delivery", "completed"];
+
+  it("STATUSES_REQUIRING_CONFIRMED_SCHEDULE is exactly the four gated statuses, nothing more or less", () => {
+    expect(new Set(STATUSES_REQUIRING_CONFIRMED_SCHEDULE)).toEqual(new Set(GATED_STATUSES));
+    expect(STATUSES_REQUIRING_CONFIRMED_SCHEDULE.length).toBe(GATED_STATUSES.length);
+  });
+
+  it("pending is allowed without any confirmed schedule", () => {
+    expect(canAdvanceToStatus("pending", EMPTY_SCHEDULE)).toBe(true);
+  });
+
+  it("cancelled is allowed without any confirmed schedule", () => {
+    expect(canAdvanceToStatus("cancelled", EMPTY_SCHEDULE)).toBe(true);
+  });
+
+  it("pending and cancelled are allowed regardless of schedule completeness", () => {
+    for (const status of UNGATED_STATUSES) {
+      expect(canAdvanceToStatus(status, EMPTY_SCHEDULE)).toBe(true);
+      expect(canAdvanceToStatus(status, COMPLETE_SCHEDULE)).toBe(true);
+    }
+  });
+
+  it("confirmed is rejected without confirmed times", () => {
+    expect(canAdvanceToStatus("confirmed", EMPTY_SCHEDULE)).toBe(false);
+  });
+
+  it("picked_up is rejected without confirmed times", () => {
+    expect(canAdvanceToStatus("picked_up", EMPTY_SCHEDULE)).toBe(false);
+  });
+
+  it("ready_for_delivery is rejected without confirmed times", () => {
+    expect(canAdvanceToStatus("ready_for_delivery", EMPTY_SCHEDULE)).toBe(false);
+  });
+
+  it("completed is rejected without confirmed times", () => {
+    expect(canAdvanceToStatus("completed", EMPTY_SCHEDULE)).toBe(false);
+  });
+
+  it("every gated status is accepted once all four confirmed fields exist", () => {
+    for (const status of GATED_STATUSES) {
+      expect(canAdvanceToStatus(status, COMPLETE_SCHEDULE)).toBe(true);
+    }
+  });
+
+  it("every partial (incomplete) four-field combination is rejected for every gated status", () => {
+    const fieldKeys = [
+      "confirmed_pickup_date",
+      "confirmed_pickup_time",
+      "confirmed_delivery_date",
+      "confirmed_delivery_time",
+    ] as const;
+
+    // All 16 combinations of the 4 fields being present/absent — every one
+    // except "all 4 present" must be rejected, for every gated status.
+    for (let bitmask = 0; bitmask < 16; bitmask++) {
+      const schedule = {
+        confirmed_pickup_date: bitmask & 1 ? PICKUP_DATE : null,
+        confirmed_pickup_time: bitmask & 2 ? "10:00" : null,
+        confirmed_delivery_date: bitmask & 4 ? DELIVERY_DATE : null,
+        confirmed_delivery_time: bitmask & 8 ? "09:00" : null,
+      };
+      const isComplete = fieldKeys.every((key) => schedule[key] !== null);
+
+      for (const status of GATED_STATUSES) {
+        expect(canAdvanceToStatus(status, schedule)).toBe(isComplete);
+      }
+    }
+  });
+});
+
+describe("proposedScheduleMatchesPreferred", () => {
+  const preferred = {
+    pickupDate: PICKUP_DATE,
+    pickupTime: "10:00",
+    deliveryDate: DELIVERY_DATE,
+    deliveryTime: "09:00",
+  };
+
+  it("true when every field matches exactly", () => {
+    expect(
+      proposedScheduleMatchesPreferred(preferred, {
+        pickupDate: PICKUP_DATE,
+        pickupTime: "10:00",
+        deliveryDate: DELIVERY_DATE,
+        deliveryTime: "09:00",
+      })
+    ).toBe(true);
+  });
+
+  it("true when times differ only by PostgREST's HH:MM vs HH:MM:SS serialization", () => {
+    expect(
+      proposedScheduleMatchesPreferred(preferred, {
+        pickupDate: PICKUP_DATE,
+        pickupTime: "10:00:00",
+        deliveryDate: DELIVERY_DATE,
+        deliveryTime: "09:00:00",
+      })
+    ).toBe(true);
+  });
+
+  it("false when the proposed pickup date differs", () => {
+    expect(
+      proposedScheduleMatchesPreferred(preferred, {
+        pickupDate: DELIVERY_DATE,
+        pickupTime: "10:00",
+        deliveryDate: DELIVERY_DATE,
+        deliveryTime: "09:00",
+      })
+    ).toBe(false);
+  });
+
+  it("false when the proposed pickup time differs", () => {
+    expect(
+      proposedScheduleMatchesPreferred(preferred, {
+        pickupDate: PICKUP_DATE,
+        pickupTime: "14:00",
+        deliveryDate: DELIVERY_DATE,
+        deliveryTime: "09:00",
+      })
+    ).toBe(false);
+  });
+
+  it("false when the proposed delivery date differs", () => {
+    expect(
+      proposedScheduleMatchesPreferred(preferred, {
+        pickupDate: PICKUP_DATE,
+        pickupTime: "10:00",
+        deliveryDate: PICKUP_DATE,
+        deliveryTime: "09:00",
+      })
+    ).toBe(false);
+  });
+
+  it("false when the proposed delivery time differs", () => {
+    expect(
+      proposedScheduleMatchesPreferred(preferred, {
+        pickupDate: PICKUP_DATE,
+        pickupTime: "10:00",
+        deliveryDate: DELIVERY_DATE,
+        deliveryTime: "16:00",
+      })
+    ).toBe(false);
+  });
+
+  it("false when the booking has no preferred delivery on file — nothing to match against", () => {
+    expect(
+      proposedScheduleMatchesPreferred(
+        { pickupDate: PICKUP_DATE, pickupTime: "10:00", deliveryDate: null, deliveryTime: null },
+        { pickupDate: PICKUP_DATE, pickupTime: "10:00", deliveryDate: DELIVERY_DATE, deliveryTime: "09:00" }
+      )
+    ).toBe(false);
   });
 });

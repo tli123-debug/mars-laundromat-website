@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { BOOKING_STATUS_STYLES } from "@/lib/booking-status-styles";
 import { cn } from "@/lib/utils";
+import { hasCompleteProposedTime, STATUSES_REQUIRING_CONFIRMED_SCHEDULE } from "@/lib/time-proposal-validation";
 import type { BookingStatus } from "@/types/database.types";
 import { updateBookingStatus } from "./actions";
 
@@ -36,12 +37,26 @@ const STATUS_OPTIONS: { value: BookingStatus; label: string }[] = [
 export function StatusSelect({
   bookingId,
   status,
+  confirmedPickupDate,
+  confirmedPickupTime,
+  confirmedDeliveryDate,
+  confirmedDeliveryTime,
 }: {
   bookingId: string;
   status: BookingStatus;
+  confirmedPickupDate: string | null;
+  confirmedPickupTime: string | null;
+  confirmedDeliveryDate: string | null;
+  confirmedDeliveryTime: string | null;
 }) {
   const [isPending, startTransition] = useTransition();
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const hasConfirmedSchedule = hasCompleteProposedTime({
+    confirmed_pickup_date: confirmedPickupDate,
+    confirmed_pickup_time: confirmedPickupTime,
+    confirmed_delivery_date: confirmedDeliveryDate,
+    confirmed_delivery_time: confirmedDeliveryTime,
+  });
 
   function applyChange(next: BookingStatus) {
     startTransition(async () => {
@@ -63,7 +78,7 @@ export function StatusSelect({
   }
 
   return (
-    <>
+    <div className="grid gap-1">
       <Select value={status} onValueChange={handleChange} disabled={isPending}>
         <SelectTrigger size="sm" className={cn("w-[180px]", BOOKING_STATUS_STYLES[status].trigger)}>
           <SelectValue />
@@ -73,6 +88,7 @@ export function StatusSelect({
             <SelectItem
               key={option.value}
               value={option.value}
+              disabled={!hasConfirmedSchedule && STATUSES_REQUIRING_CONFIRMED_SCHEDULE.includes(option.value)}
               className={BOOKING_STATUS_STYLES[option.value].item}
             >
               {option.label}
@@ -80,6 +96,12 @@ export function StatusSelect({
           ))}
         </SelectContent>
       </Select>
+      {!hasConfirmedSchedule && (
+        <p className="max-w-[180px] text-xs text-muted-foreground">
+          Confirm the pickup and delivery schedule to unlock further status changes.
+          请先确认取件和送件时间以解锁更多状态选项。
+        </p>
+      )}
 
       <AlertDialog open={confirmingCancel} onOpenChange={setConfirmingCancel}>
         <AlertDialogContent>
@@ -103,6 +125,6 @@ export function StatusSelect({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

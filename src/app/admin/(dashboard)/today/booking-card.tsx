@@ -107,7 +107,14 @@ export function BookingCard({ booking }: { booking: BookingRow }) {
           <div className="text-sm text-muted-foreground">{booking.address}</div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <StatusSelect bookingId={booking.id} status={booking.status} />
+          <StatusSelect
+            bookingId={booking.id}
+            status={booking.status}
+            confirmedPickupDate={booking.confirmed_pickup_date}
+            confirmedPickupTime={booking.confirmed_pickup_time}
+            confirmedDeliveryDate={booking.confirmed_delivery_date}
+            confirmedDeliveryTime={booking.confirmed_delivery_time}
+          />
           <PaymentControl bookingId={booking.id} paid={booking.paid} paymentMethod={booking.payment_method} />
         </div>
       </div>
