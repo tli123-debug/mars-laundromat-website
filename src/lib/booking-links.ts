@@ -137,8 +137,8 @@ export function buildPickupConfirmationMessage(
     `Your ${SERVICE_TYPE_CUSTOMER_LABELS[serviceType]} pickup is confirmed for ` +
     `${formatMessageDate(confirmedPickup.date)}, ${windowLabel(confirmedPickup.time)}.\n` +
     `We'll deliver it back ${formatMessageDate(confirmedDelivery.date)}, ${windowLabel(confirmedDelivery.time)}.` +
-    `\n\nPlease make sure someone or a doorman is AVAILABLE to hand-off and receive your laundry ` +
-    `during that window — if your plans change, call or text us to pick a different time. ` +
+    `\n\nPlease make sure someone or a doorman is AVAILABLE to hand off and receive your laundry ` +
+    `during those windows — if your plans change, call or text us to pick a different time. ` +
     `We're not able to leave items unattended unless we've specifically agreed on it.` +
     `\n\nWe'll text your final total once we've received your order and finished weighing/counting it.` +
     `\n\nPlease reply if you have any questions.`

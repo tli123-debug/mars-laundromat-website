@@ -201,8 +201,8 @@ describe("buildPickupConfirmationMessage", () => {
       "Hi Jane Rivera, this is Mars Laundromat.\n\n" +
         "Your Wash & Fold pickup is confirmed for Wed, Sep 2, 9:00 AM–10:00 AM.\n" +
         "We'll deliver it back Thu, Sep 3, 6:00 PM–7:00 PM.\n\n" +
-        "Please make sure someone or a doorman is AVAILABLE to hand-off and receive your laundry " +
-        "during that window — if your plans change, call or text us to pick a different time. " +
+        "Please make sure someone or a doorman is AVAILABLE to hand off and receive your laundry " +
+        "during those windows — if your plans change, call or text us to pick a different time. " +
         "We're not able to leave items unattended unless we've specifically agreed on it.\n\n" +
         "We'll text your final total once we've received your order and finished weighing/counting it.\n\n" +
         "Please reply if you have any questions."
@@ -215,9 +215,9 @@ describe("buildPickupConfirmationMessage", () => {
     expect(message).toContain("agreed on it.\n\nWe'll text your final total");
   });
 
-  it("names the unattended-handoff policy explicitly, covering both pickup hand-off and delivery receipt", () => {
+  it("names the unattended-handoff policy explicitly, covering both pickup hand off and delivery receipt", () => {
     const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
-    expect(message).toContain("someone or a doorman is AVAILABLE to hand-off and receive your laundry");
+    expect(message).toContain("someone or a doorman is AVAILABLE to hand off and receive your laundry");
     expect(message).toContain("We're not able to leave items unattended unless we've specifically agreed on it.");
   });
 });
@@ -320,7 +320,7 @@ describe("buildProposedDeliveryMessage", () => {
 
   it("never mentions pickup — pickup is already historical by the time this message is used", () => {
     expect(buildProposedDeliveryMessage("Jane", delivery)).not.toContain("Pickup");
-    expect(buildProposedDeliveryMessage("Jane", delivery)).not.toContain("hand-off");
+    expect(buildProposedDeliveryMessage("Jane", delivery)).not.toContain("hand off");
   });
 
   it("carries the same availability/handoff policy as buildPickupConfirmationMessage, so a rescheduled delivery is never left without the reminder", () => {
