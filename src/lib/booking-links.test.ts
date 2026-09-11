@@ -43,12 +43,15 @@ describe("bookingSmsHref", () => {
 });
 
 describe("buildQuoteTextMessage", () => {
-  it("matches the exact owner-approved wording, with no Zelle detail (owner hasn't provided one yet)", () => {
+  it("matches the exact owner-approved wording, with both the Zelle and Venmo detail lines", () => {
     const message = buildQuoteTextMessage("Jane Rivera", 4800);
     expect(message).toBe(
       "Hi Jane Rivera, this is Mars Laundromat.\n\n" +
         "Your order total is $48.\n\n" +
-        "Cash or Zelle accepted. You can pay cash at the door when we deliver.\n\n" +
+        "Cash, Zelle, or Venmo accepted.\n" +
+        "Zelle: 917-881-2623\n" +
+        "Venmo: @Yong-Li-234\n" +
+        "You can pay cash at the door when we deliver.\n\n" +
         "Please reply if you have any questions."
     );
   });
@@ -65,10 +68,9 @@ describe("buildQuoteTextMessage", () => {
     expect(buildQuoteTextMessage("Wei Chen", 4800)).toMatch(/^Hi Wei Chen,/);
   });
 
-  it("never includes Zelle recipient details while ZELLE_RECIPIENT_DETAIL stays null, only the fixed 'accepted' wording", () => {
+  it("lists both Zelle and Venmo in the 'accepted' sentence, each with its own detail line, in that order", () => {
     const message = buildQuoteTextMessage("Jane", 4800);
-    expect(message).toContain("Cash or Zelle accepted.");
-    expect(message).not.toContain("(Zelle:");
+    expect(message).toContain("Cash, Zelle, or Venmo accepted.\nZelle: 917-881-2623\nVenmo: @Yong-Li-234\n");
   });
 
   it("includes the confirmed delivery date/window when passed, inserted between the total and the payment wording", () => {
@@ -77,7 +79,10 @@ describe("buildQuoteTextMessage", () => {
       "Hi Jane Rivera, this is Mars Laundromat.\n\n" +
         "Your order total is $48.\n" +
         "We'll deliver it back Thu, Sep 3, 6:00 PM–7:00 PM.\n\n" +
-        "Cash or Zelle accepted. You can pay cash at the door when we deliver.\n\n" +
+        "Cash, Zelle, or Venmo accepted.\n" +
+        "Zelle: 917-881-2623\n" +
+        "Venmo: @Yong-Li-234\n" +
+        "You can pay cash at the door when we deliver.\n\n" +
         "Please reply if you have any questions."
     );
   });

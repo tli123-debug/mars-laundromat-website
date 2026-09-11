@@ -1,5 +1,5 @@
 import { siteConfig } from "@/content/site-config";
-import { ZELLE_RECIPIENT_DETAIL } from "@/content/payment";
+import { VENMO_RECIPIENT_DETAIL, ZELLE_RECIPIENT_DETAIL } from "@/content/payment";
 import { formatDollars } from "@/lib/format-currency";
 import { SERVICE_TYPE_CUSTOMER_LABELS } from "@/lib/service-type";
 import { windowLabel } from "@/lib/validations/booking-schema";
@@ -44,10 +44,24 @@ export function bookingSmsHref(phone: string, body?: string): string {
 }
 
 /**
- * The exact owner-approved assisted quote-text wording. ZELLE_RECIPIENT_DETAIL
- * is null until the owner has real Zelle-ready details to share — once
- * that's set, it's appended automatically and this function never needs to
- * change again for that reason alone.
+ * Joins payment method names into a natural English list — "Cash" (1),
+ * "Cash or Zelle" (2), "Cash, Zelle, or Venmo" (3+) — so the "accepted"
+ * sentence in buildQuoteTextMessage() always lists exactly the methods that
+ * actually have a detail line below it, never drifting out of sync with
+ * ZELLE_RECIPIENT_DETAIL/VENMO_RECIPIENT_DETAIL.
+ */
+function joinPaymentMethods(methods: string[]): string {
+  if (methods.length <= 1) return methods.join("");
+  if (methods.length === 2) return `${methods[0]} or ${methods[1]}`;
+  return `${methods.slice(0, -1).join(", ")}, or ${methods[methods.length - 1]}`;
+}
+
+/**
+ * The exact owner-approved assisted quote-text wording. Cash is always
+ * accepted; Zelle/Venmo each join the "accepted" sentence and gain their own
+ * detail line only when their respective content/payment.ts constant is set
+ * — either can be left null if that method isn't ready yet, and the message
+ * adjusts automatically with no other code change needed.
  *
  * `confirmedDelivery` is optional and omitted gracefully: older/legacy rows
  * can have a quote without complete confirmed delivery fields yet (times
@@ -60,15 +74,28 @@ export function buildQuoteTextMessage(
   quoteTotalCents: number,
   confirmedDelivery?: ConfirmedWindow | null
 ): string {
-  const zelleDetail = ZELLE_RECIPIENT_DETAIL ? ` (Zelle: ${ZELLE_RECIPIENT_DETAIL})` : "";
   const deliverySentence = confirmedDelivery
     ? `\nWe'll deliver it back ${formatMessageDate(confirmedDelivery.date)}, ${windowLabel(confirmedDelivery.time)}.`
     : "";
+
+  const paymentMethods = ["Cash"];
+  const paymentDetailLines: string[] = [];
+  if (ZELLE_RECIPIENT_DETAIL) {
+    paymentMethods.push("Zelle");
+    paymentDetailLines.push(`Zelle: ${ZELLE_RECIPIENT_DETAIL}`);
+  }
+  if (VENMO_RECIPIENT_DETAIL) {
+    paymentMethods.push("Venmo");
+    paymentDetailLines.push(`Venmo: @${VENMO_RECIPIENT_DETAIL}`);
+  }
+  const detailLinesBlock = paymentDetailLines.length > 0 ? `\n${paymentDetailLines.join("\n")}` : "";
+
   return (
     `Hi ${customerName}, this is Mars Laundromat.\n\n` +
     `Your order total is ${formatDollars(quoteTotalCents)}.` +
     deliverySentence +
-    `\n\nCash or Zelle accepted${zelleDetail}. You can pay cash at the door when we deliver.` +
+    `\n\n${joinPaymentMethods(paymentMethods)} accepted.${detailLinesBlock}\n` +
+    `You can pay cash at the door when we deliver.` +
     `\n\nPlease reply if you have any questions.`
   );
 }
