@@ -47,6 +47,7 @@ export function StatusSelect({
   confirmedDeliveryTime,
   paid,
   paymentMethod,
+  showGuidance = true,
 }: {
   bookingId: string;
   status: BookingStatus;
@@ -56,6 +57,7 @@ export function StatusSelect({
   confirmedDeliveryTime: string | null;
   paid: boolean;
   paymentMethod: PaymentMethod | null;
+  showGuidance?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [confirmingCancel, setConfirmingCancel] = useState(false);
@@ -113,12 +115,12 @@ export function StatusSelect({
           ))}
         </SelectContent>
       </Select>
-      {!hasConfirmedSchedule && (
+      {showGuidance && !hasConfirmedSchedule && (
         <p className="max-w-[190px] whitespace-normal break-words text-xs leading-snug text-muted-foreground">
           Confirm both times to unlock later statuses. 确认取件和送件时间后可更改后续状态。
         </p>
       )}
-      {hasConfirmedSchedule && !hasPayment && status !== "completed" && (
+      {showGuidance && hasConfirmedSchedule && !hasPayment && status !== "completed" && (
         <p className="max-w-[190px] whitespace-normal break-words text-xs leading-snug text-muted-foreground">
           Record Cash or Zelle payment before completing. 完成前请记录现金或 Zelle 付款。
         </p>

@@ -208,6 +208,7 @@ export default async function AdminBookingsPage(props: PageProps<"/admin/booking
                     confirmedDeliveryTime={booking.confirmed_delivery_time}
                     paid={booking.paid}
                     paymentMethod={booking.payment_method}
+                    showGuidance={false}
                   />
                 </TableCell>
                 <TableCell className="align-top">
