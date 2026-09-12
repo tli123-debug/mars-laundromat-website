@@ -171,21 +171,22 @@ describe("buildPickupConfirmationMessage", () => {
     expect(message).toContain("We'll deliver it back Thu, Sep 3, 6:00 PM–7:00 PM.");
   });
 
-  it("states the final total will be texted after the order is received and weighed/counted", () => {
+  it("does not mention the total or weighing/counting — that expectation is no longer set here", () => {
     const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
-    expect(message).toContain("We'll text your final total once we've received your order and finished weighing/counting it.");
+    expect(message).not.toContain("total");
+    expect(message).not.toContain("weigh");
   });
 
-  it("invites a reply for questions", () => {
+  it("invites a reply for questions, on its own line at the end", () => {
     const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
-    expect(message).toContain("Please reply if you have any questions.");
+    expect(message).toContain("reschedule if needed.\n\nPlease reply if you have any questions.");
   });
 
   it("uses readable paragraph breaks and puts pickup and delivery on separate lines", () => {
     const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
     expect(message).toContain("Mars Laundromat.\n\nYour Wash & Fold pickup");
     expect(message).toContain("9:00 AM–10:00 AM.\nWe'll deliver it back");
-    expect(message).toContain("weighing/counting it.\n\nPlease reply");
+    expect(message).toContain("if needed.\n\nPlease reply");
   });
 
   it("never mentions price, payment, or Zelle — that's the separate, later quote text", () => {
@@ -195,30 +196,30 @@ describe("buildPickupConfirmationMessage", () => {
     expect(message).not.toContain("Cash");
   });
 
-  it("matches the exact owner-approved wording, including the availability/handoff-policy paragraph", () => {
+  it("matches the exact owner-approved wording — three short paragraphs after two rounds of trimming for iMessage readability", () => {
     const message = buildPickupConfirmationMessage("Jane Rivera", "wash_and_fold", pickup, delivery);
     expect(message).toBe(
       "Hi Jane Rivera, this is Mars Laundromat.\n\n" +
         "Your Wash & Fold pickup is confirmed for Wed, Sep 2, 9:00 AM–10:00 AM.\n" +
         "We'll deliver it back Thu, Sep 3, 6:00 PM–7:00 PM.\n\n" +
-        "Please make sure someone or a doorman is AVAILABLE to hand off and receive your laundry " +
-        "during those windows — if your plans change, call or text us to pick a different time. " +
-        "We're not able to leave items unattended unless we've specifically agreed on it.\n\n" +
-        "We'll text your final total once we've received your order and finished weighing/counting it.\n\n" +
+        "Please have someone available for both, since we can't leave items unattended unless " +
+        "arranged in advance. Call or text to reschedule if needed.\n\n" +
         "Please reply if you have any questions."
     );
   });
 
-  it("states the availability/handoff policy on its own paragraph, between the delivery line and the final-total line", () => {
+  it("states the availability policy on its own paragraph, between the delivery line and the closing reply-invite line", () => {
     const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
-    expect(message).toContain("We'll deliver it back Thu, Sep 3, 6:00 PM–7:00 PM.\n\nPlease make sure someone");
-    expect(message).toContain("agreed on it.\n\nWe'll text your final total");
+    expect(message).toContain("We'll deliver it back Thu, Sep 3, 6:00 PM–7:00 PM.\n\nPlease have someone available");
+    expect(message).toContain("reschedule if needed.\n\nPlease reply if you have any questions.");
   });
 
-  it("names the unattended-handoff policy explicitly, covering both pickup hand off and delivery receipt", () => {
+  it("states the unattended-item policy without an em dash, covering both pickup and delivery in one short paragraph", () => {
     const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
-    expect(message).toContain("someone or a doorman is AVAILABLE to hand off and receive your laundry");
-    expect(message).toContain("We're not able to leave items unattended unless we've specifically agreed on it.");
+    expect(message).toContain(
+      "Please have someone available for both, since we can't leave items unattended unless arranged in advance."
+    );
+    expect(message).not.toContain("—");
   });
 });
 

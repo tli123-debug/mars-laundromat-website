@@ -116,15 +116,18 @@ export function bookingQuoteTextHref(
  * renders the "Text Pickup Confirmation" button once both are non-null, so
  * neither ConfirmedWindow here is optional). Deliberately says nothing about
  * price: the total isn't known until the order is weighed/counted at the
- * store, which is exactly what this message tells the customer to expect
- * next — see buildQuoteTextMessage() for the separate, later quote text.
+ * store — see buildQuoteTextMessage() for the separate, later quote text,
+ * which is what actually tells the customer their total.
  *
- * The availability/handoff paragraph is the owner-approved replacement for
- * two separate optional "Confirm Pickup/Delivery Availability" assisted
- * texts — folding the expectation into the one message every customer
- * already gets is more reliable than an easy-to-skip optional step later,
- * and states the unattended-handoff policy in writing at the earliest
- * natural touchpoint.
+ * The availability paragraph replaces two separate optional "Confirm
+ * Pickup/Delivery Availability" assisted texts — folding the expectation
+ * into the one message every customer already gets is more reliable than
+ * an easy-to-skip optional step later, and states the unattended-handoff
+ * policy in writing at the earliest natural touchpoint. Kept deliberately
+ * short: an earlier, more detailed version of this paragraph (and an
+ * earlier version of this whole message, which also explicitly mentioned
+ * the later total-text) made the whole message read as a wall of text in
+ * iMessage previews.
  */
 export function buildPickupConfirmationMessage(
   customerName: string,
@@ -137,10 +140,8 @@ export function buildPickupConfirmationMessage(
     `Your ${SERVICE_TYPE_CUSTOMER_LABELS[serviceType]} pickup is confirmed for ` +
     `${formatMessageDate(confirmedPickup.date)}, ${windowLabel(confirmedPickup.time)}.\n` +
     `We'll deliver it back ${formatMessageDate(confirmedDelivery.date)}, ${windowLabel(confirmedDelivery.time)}.` +
-    `\n\nPlease make sure someone or a doorman is AVAILABLE to hand off and receive your laundry ` +
-    `during those windows — if your plans change, call or text us to pick a different time. ` +
-    `We're not able to leave items unattended unless we've specifically agreed on it.` +
-    `\n\nWe'll text your final total once we've received your order and finished weighing/counting it.` +
+    `\n\nPlease have someone available for both, since we can't leave items unattended unless ` +
+    `arranged in advance. Call or text to reschedule if needed.` +
     `\n\nPlease reply if you have any questions.`
   );
 }
