@@ -179,14 +179,14 @@ describe("buildPickupConfirmationMessage", () => {
 
   it("invites a reply for questions, on its own line at the end", () => {
     const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
-    expect(message).toContain("reschedule if needed.\n\nPlease reply if you have any questions.");
+    expect(message).toContain("specified in the notes.\n\nPlease reply if you have any questions.");
   });
 
   it("uses readable paragraph breaks and puts pickup and delivery on separate lines", () => {
     const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
     expect(message).toContain("Mars Laundromat.\n\nYour Wash & Fold pickup");
     expect(message).toContain("9:00 AM–10:00 AM.\nWe'll deliver it back");
-    expect(message).toContain("if needed.\n\nPlease reply");
+    expect(message).toContain("specified in the notes.\n\nPlease reply");
   });
 
   it("never mentions price, payment, or Zelle — that's the separate, later quote text", () => {
@@ -196,14 +196,14 @@ describe("buildPickupConfirmationMessage", () => {
     expect(message).not.toContain("Cash");
   });
 
-  it("matches the exact owner-approved wording — three short paragraphs after two rounds of trimming for iMessage readability", () => {
+  it("matches the exact owner-approved wording — the availability line now defers to an unattended-handoff note instead of requiring a call", () => {
     const message = buildPickupConfirmationMessage("Jane Rivera", "wash_and_fold", pickup, delivery);
     expect(message).toBe(
       "Hi Jane Rivera, this is Mars Laundromat.\n\n" +
         "Your Wash & Fold pickup is confirmed for Wed, Sep 2, 9:00 AM–10:00 AM.\n" +
         "We'll deliver it back Thu, Sep 3, 6:00 PM–7:00 PM.\n\n" +
-        "Please have someone available for both, since we can't leave items unattended unless " +
-        "arranged in advance. Call or text to reschedule if needed.\n\n" +
+        "Please have someone available for pickup and delivery unless an unattended handoff was " +
+        "specified in the notes.\n\n" +
         "Please reply if you have any questions."
     );
   });
@@ -211,15 +211,16 @@ describe("buildPickupConfirmationMessage", () => {
   it("states the availability policy on its own paragraph, between the delivery line and the closing reply-invite line", () => {
     const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
     expect(message).toContain("We'll deliver it back Thu, Sep 3, 6:00 PM–7:00 PM.\n\nPlease have someone available");
-    expect(message).toContain("reschedule if needed.\n\nPlease reply if you have any questions.");
+    expect(message).toContain("specified in the notes.\n\nPlease reply if you have any questions.");
   });
 
-  it("states the unattended-item policy without an em dash, covering both pickup and delivery in one short paragraph", () => {
+  it("defers to an unattended-handoff note rather than requiring staff to have separately arranged it", () => {
     const message = buildPickupConfirmationMessage("Jane", "wash_and_fold", pickup, delivery);
     expect(message).toContain(
-      "Please have someone available for both, since we can't leave items unattended unless arranged in advance."
+      "Please have someone available for pickup and delivery unless an unattended handoff was specified in the notes."
     );
     expect(message).not.toContain("—");
+    expect(message).not.toContain("arranged in advance");
   });
 });
 

@@ -123,11 +123,15 @@ export function bookingQuoteTextHref(
  * Pickup/Delivery Availability" assisted texts — folding the expectation
  * into the one message every customer already gets is more reliable than
  * an easy-to-skip optional step later, and states the unattended-handoff
- * policy in writing at the earliest natural touchpoint. Kept deliberately
- * short: an earlier, more detailed version of this paragraph (and an
- * earlier version of this whole message, which also explicitly mentioned
- * the later total-text) made the whole message read as a wall of text in
- * iMessage previews.
+ * policy in writing at the earliest natural touchpoint. "the notes" means
+ * the customer's own special_instructions, visible to staff on this same
+ * booking-detail page — this is a communication line for staff to judge
+ * before sending, not an app-enforced rule; nothing in the code actually
+ * reads special_instructions to change behavior based on it. Kept
+ * deliberately short: an earlier, more detailed version of this paragraph
+ * (and an earlier version of this whole message, which also explicitly
+ * mentioned the later total-text) made the whole message read as a wall
+ * of text in iMessage previews.
  */
 export function buildPickupConfirmationMessage(
   customerName: string,
@@ -140,8 +144,8 @@ export function buildPickupConfirmationMessage(
     `Your ${SERVICE_TYPE_CUSTOMER_LABELS[serviceType]} pickup is confirmed for ` +
     `${formatMessageDate(confirmedPickup.date)}, ${windowLabel(confirmedPickup.time)}.\n` +
     `We'll deliver it back ${formatMessageDate(confirmedDelivery.date)}, ${windowLabel(confirmedDelivery.time)}.` +
-    `\n\nPlease have someone available for both, since we can't leave items unattended unless ` +
-    `arranged in advance. Call or text to reschedule if needed.` +
+    `\n\nPlease have someone available for pickup and delivery unless an unattended handoff was ` +
+    `specified in the notes.` +
     `\n\nPlease reply if you have any questions.`
   );
 }
