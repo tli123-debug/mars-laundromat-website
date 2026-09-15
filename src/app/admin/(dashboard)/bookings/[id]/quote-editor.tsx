@@ -32,6 +32,7 @@ export function QuoteEditor({ booking }: { booking: BookingRow }) {
   const [isPending, startTransition] = useTransition();
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [savedQuoteTotalCents, setSavedQuoteTotalCents] = useState(booking.quote_total_cents);
+  const [savedBillableWeightLb, setSavedBillableWeightLb] = useState(booking.billable_weight_lb);
 
   const includesWashAndFold = serviceTypeIncludesWashAndFold(booking.service_type);
   const includesDryCleaning = serviceTypeIncludesDryCleaning(booking.service_type);
@@ -128,6 +129,9 @@ export function QuoteEditor({ booking }: { booking: BookingRow }) {
       } else {
         if ("quoteTotalCents" in result && result.quoteTotalCents !== undefined) {
           setSavedQuoteTotalCents(result.quoteTotalCents);
+        }
+        if ("billableWeightLb" in result && result.billableWeightLb !== undefined) {
+          setSavedBillableWeightLb(result.billableWeightLb);
         }
         setHasUnsavedChanges(false);
         toast.success("Quote saved as draft.");
@@ -291,7 +295,8 @@ export function QuoteEditor({ booking }: { booking: BookingRow }) {
                   savedQuoteTotalCents,
                   booking.confirmed_delivery_date && booking.confirmed_delivery_time
                     ? { date: booking.confirmed_delivery_date, time: booking.confirmed_delivery_time }
-                    : null
+                    : null,
+                  savedBillableWeightLb
                 )}
               >
                 Text Quote 发报价短信

@@ -365,7 +365,7 @@ export async function saveQuote(bookingId: string, input: unknown) {
     .from("bookings")
     .update(payload)
     .eq("id", bookingId)
-    .select("quote_total_cents")
+    .select("quote_total_cents, billable_weight_lb")
     .single();
 
   if (error || !updatedBooking) {
@@ -374,7 +374,11 @@ export async function saveQuote(bookingId: string, input: unknown) {
   }
 
   revalidateBookingPaths(bookingId);
-  return { error: null, quoteTotalCents: updatedBooking.quote_total_cents };
+  return {
+    error: null,
+    quoteTotalCents: updatedBooking.quote_total_cents,
+    billableWeightLb: updatedBooking.billable_weight_lb,
+  };
 }
 
 export async function markQuoteSent(bookingId: string) {

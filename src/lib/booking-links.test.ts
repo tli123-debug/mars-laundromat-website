@@ -100,6 +100,53 @@ describe("buildQuoteTextMessage", () => {
       buildQuoteTextMessage("Jane Rivera", 4800)
     );
   });
+
+  describe("billableWeightLb — pricing-transparency parenthetical", () => {
+    it("shows the weight breakdown when it exactly explains the whole total (53 lbs x $1.50/lb = $79.50)", () => {
+      const message = buildQuoteTextMessage("Jane Rivera", 7950, null, 53);
+      expect(message).toContain("Your order total is $79.50 (53 lbs × $1.50/lb).");
+    });
+
+    it("matches the exact full message with the weight detail included", () => {
+      const message = buildQuoteTextMessage("Jane Rivera", 7950, null, 53);
+      expect(message).toBe(
+        "Hi Jane Rivera, this is Mars Laundromat.\n\n" +
+          "Your order total is $79.50 (53 lbs × $1.50/lb).\n\n" +
+          "Cash, Zelle, or Venmo accepted.\n" +
+          "Zelle: 917-881-2623\n" +
+          "Venmo: @Yong-Li-234\n" +
+          "You can pay cash at the door when we deliver.\n\n" +
+          "Please reply if you have any questions."
+      );
+    });
+
+    it("omits the weight breakdown when a same-day fee or surcharge means weight alone no longer explains the total", () => {
+      // 53 lbs * $1.50/lb = $79.50, but the total here is $87.50 (as if an
+      // $8 same-day fee were added) — the arithmetic no longer matches, so
+      // showing "(53 lbs...)" next to $87.50 would look like a mistake.
+      const message = buildQuoteTextMessage("Jane", 8750, null, 53);
+      expect(message).toContain("Your order total is $87.50.");
+      expect(message).not.toContain("lbs");
+      expect(message).not.toContain("×");
+    });
+
+    it("omits the weight breakdown when billableWeightLb is null (e.g. a dry-cleaning-only order)", () => {
+      const message = buildQuoteTextMessage("Jane", 4800, null, null);
+      expect(message).toContain("Your order total is $48.");
+      expect(message).not.toContain("lbs");
+    });
+
+    it("omits the weight breakdown when billableWeightLb is simply omitted (legacy call sites)", () => {
+      expect(buildQuoteTextMessage("Jane", 4800)).not.toContain("lbs");
+    });
+
+    it("places the weight parenthetical before the delivery sentence, not after", () => {
+      const message = buildQuoteTextMessage("Jane", 7950, { date: "2026-09-03", time: "18:00" }, 53);
+      expect(message).toContain(
+        "Your order total is $79.50 (53 lbs × $1.50/lb).\nWe'll deliver it back Thu, Sep 3"
+      );
+    });
+  });
 });
 
 describe("bookingQuoteTextHref", () => {
@@ -115,6 +162,13 @@ describe("bookingQuoteTextHref", () => {
     const decoded = decodeURIComponent(href.split("?body=")[1]);
     expect(decoded).toContain("$48.");
     expect(decoded).toContain("Please reply if you have any questions.");
+  });
+
+  it("passes billableWeightLb through to the encoded message, including the × sign", () => {
+    const href = bookingQuoteTextHref("7185550134", "Jane Rivera", 7950, null, 53);
+    const decoded = decodeURIComponent(href.split("?body=")[1]);
+    expect(decoded).toBe(buildQuoteTextMessage("Jane Rivera", 7950, null, 53));
+    expect(decoded).toContain("(53 lbs × $1.50/lb)");
   });
 
   it("preserves the quote message's paragraph and line-break formatting through the SMS link", () => {

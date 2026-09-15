@@ -1,6 +1,7 @@
 import { siteConfig } from "@/content/site-config";
 import { VENMO_RECIPIENT_DETAIL, ZELLE_RECIPIENT_DETAIL } from "@/content/payment";
 import { formatDollars } from "@/lib/format-currency";
+import { PRICE_PER_POUND_CENTS } from "@/lib/pricing/calculate-quote";
 import { SERVICE_TYPE_CUSTOMER_LABELS } from "@/lib/service-type";
 import { windowLabel } from "@/lib/validations/booking-schema";
 import type { ServiceType } from "@/types/database.types";
@@ -68,14 +69,29 @@ function joinPaymentMethods(methods: string[]): string {
  * negotiation and quoting are independent flows), so passing null/undefined
  * here produces the same delivery-free message format, with no dangling or
  * malformed delivery sentence.
+ *
+ * `billableWeightLb` adds a "(53 lbs × $1.50/lb)" breakdown next to the
+ * total, for pricing transparency — but only when that arithmetic actually
+ * equals the whole total exactly. It won't for a same-day fee, a surcharge,
+ * or any dry-cleaning component, since none of those are weight-based; in
+ * those cases the parenthetical is silently omitted rather than shown next
+ * to a total it doesn't fully explain, which would look like a mistake
+ * rather than a reassurance.
  */
 export function buildQuoteTextMessage(
   customerName: string,
   quoteTotalCents: number,
-  confirmedDelivery?: ConfirmedWindow | null
+  confirmedDelivery?: ConfirmedWindow | null,
+  billableWeightLb?: number | null
 ): string {
   const deliverySentence = confirmedDelivery
     ? `\nWe'll deliver it back ${formatMessageDate(confirmedDelivery.date)}, ${windowLabel(confirmedDelivery.time)}.`
+    : "";
+
+  const weightExplainsTotal =
+    billableWeightLb != null && billableWeightLb * PRICE_PER_POUND_CENTS === quoteTotalCents;
+  const weightDetail = weightExplainsTotal
+    ? ` (${billableWeightLb} lbs × ${formatDollars(PRICE_PER_POUND_CENTS)}/lb)`
     : "";
 
   const paymentMethods = ["Cash"];
@@ -92,7 +108,7 @@ export function buildQuoteTextMessage(
 
   return (
     `Hi ${customerName}, this is Mars Laundromat.\n\n` +
-    `Your order total is ${formatDollars(quoteTotalCents)}.` +
+    `Your order total is ${formatDollars(quoteTotalCents)}${weightDetail}.` +
     deliverySentence +
     `\n\n${joinPaymentMethods(paymentMethods)} accepted.${detailLinesBlock}\n` +
     `You can pay cash at the door when we deliver.` +
@@ -105,9 +121,13 @@ export function bookingQuoteTextHref(
   phone: string,
   customerName: string,
   quoteTotalCents: number,
-  confirmedDelivery?: ConfirmedWindow | null
+  confirmedDelivery?: ConfirmedWindow | null,
+  billableWeightLb?: number | null
 ): string {
-  return bookingSmsHref(phone, buildQuoteTextMessage(customerName, quoteTotalCents, confirmedDelivery));
+  return bookingSmsHref(
+    phone,
+    buildQuoteTextMessage(customerName, quoteTotalCents, confirmedDelivery, billableWeightLb)
+  );
 }
 
 /**
