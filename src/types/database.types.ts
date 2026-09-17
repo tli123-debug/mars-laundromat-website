@@ -7,8 +7,9 @@
  * 20260826000000_dry_cleaning_expansion.sql,
  * 20260827000000_status_simplification_and_delete_policy.sql,
  * 20260828000000_same_day_fee_reduction.sql,
- * 20260830000000_recurring_pickups_v1.sql, and
- * 20260908000000_add_acquisition_source_to_bookings.sql.
+ * 20260830000000_recurring_pickups_v1.sql,
+ * 20260908000000_add_acquisition_source_to_bookings.sql, and
+ * 20260917000000_booking_submission_idempotency.sql.
  * If the schema changes, update this alongside the migration (or regenerate via
  * `npx supabase gen types typescript --linked --schema public` once the project is CLI-linked).
  */
@@ -116,6 +117,12 @@ export interface Database {
           recurring_schedule_id: string | null;
           recurring_occurrence_date: string | null;
           acquisition_source: AcquisitionSource | null;
+          // Minted by the browser once per logical submission attempt and
+          // reused across retries — see submit_booking()/
+          // find_existing_booking_submission() in
+          // 20260917000000_booking_submission_idempotency.sql. Null for
+          // every non-website row (phone, recurring).
+          client_submission_id: string | null;
         };
         Insert: {
           id?: string;
@@ -164,6 +171,7 @@ export interface Database {
           recurring_schedule_id?: string | null;
           recurring_occurrence_date?: string | null;
           acquisition_source?: AcquisitionSource | null;
+          client_submission_id?: string | null;
         };
         Update: {
           id?: string;
@@ -212,6 +220,7 @@ export interface Database {
           recurring_schedule_id?: string | null;
           recurring_occurrence_date?: string | null;
           acquisition_source?: AcquisitionSource | null;
+          client_submission_id?: string | null;
         };
         // created_by/updated_by/payment_verified_by reference auth.users, not a
         // public-schema table — included for parity with what the Supabase CLI
@@ -348,7 +357,52 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    // generate_due_recurring_bookings() (20260830000000_recurring_pickups_v1.sql)
+    // is deliberately absent here — it's only ever invoked by pg_cron
+    // (`select public.generate_due_recurring_bookings();`), never from
+    // application code via supabase.rpc(), so it has never needed a type
+    // here. find_existing_booking_submission/submit_booking
+    // (20260917000000_booking_submission_idempotency.sql) are the first
+    // functions this app calls via .rpc() — see src/app/(site)/book/actions.ts.
+    Functions: {
+      find_existing_booking_submission: {
+        Args: {
+          p_client_submission_id: string;
+          p_name: string;
+          p_phone: string;
+          p_address: string;
+          p_service_type: string;
+          p_service_speed: string;
+          p_pickup_date: string;
+          p_pickup_time: string;
+          p_delivery_date: string;
+          p_delivery_time: string;
+          p_dry_cleaning_item_description: string | null;
+          p_special_instructions: string | null;
+        };
+        Returns: { booking_id: string | null; outcome: string }[];
+      };
+      submit_booking: {
+        Args: {
+          p_client_submission_id: string;
+          p_name: string;
+          p_phone: string;
+          p_address: string;
+          p_service_type: string;
+          p_service_speed: string;
+          p_pickup_date: string;
+          p_pickup_time: string;
+          p_delivery_date: string;
+          p_delivery_time: string;
+          p_dry_cleaning_item_description: string | null;
+          p_dry_cleaning_item_description_zh: string | null;
+          p_special_instructions: string | null;
+          p_special_instructions_zh: string | null;
+          p_acquisition_source: string | null;
+        };
+        Returns: { booking_id: string; outcome: string }[];
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

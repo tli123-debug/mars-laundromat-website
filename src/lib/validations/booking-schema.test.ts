@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookingSchema, fieldsToResetOnServiceChange, windowLabel } from "./booking-schema";
+import { bookingSchema, bookingSchemaShape, fieldsToResetOnServiceChange, windowLabel } from "./booking-schema";
 import { addDays, getBrooklynToday, getWindowsForDate } from "@/lib/booking-hours";
 import { getDryCleaningDeliveryDate } from "@/lib/dry-cleaning-schedule";
 import { ACQUISITION_SOURCES, normalizeAcquisitionSource } from "@/lib/acquisition-source";
@@ -276,6 +276,28 @@ describe("bookingSchema — at least one service is required", () => {
 
   it("accepts both selected together", () => {
     expect(bookingSchema.safeParse(bothInput()).success).toBe(true);
+  });
+});
+
+// bookingSchemaShape backs createBooking()'s recovery check
+// (find_existing_booking_submission), which must be able to look up an
+// already-accepted booking even after its originally-requested date has
+// rolled into the past, and even for a row whose service-selection would
+// have failed bookingSchema's own superRefine. These two behaviors are the
+// entire reason the shape was split out — proving both here is proving the
+// split actually does what it's for, not just that it compiles.
+describe("bookingSchemaShape — shape only, no date/business-rule logic", () => {
+  it("accepts a pickup date already in the past — bookingSchema still rejects the same input", () => {
+    const pastDate = "2000-01-01";
+    const input = baseInput({ preferredPickupDate: pastDate, preferredDeliveryDate: pastDate });
+    expect(bookingSchemaShape.safeParse(input).success).toBe(true);
+    expect(bookingSchema.safeParse(input).success).toBe(false);
+  });
+
+  it("accepts neither service selected — bookingSchema still rejects the same input", () => {
+    const input = baseInput({ washAndFold: false, dryCleaning: false });
+    expect(bookingSchemaShape.safeParse(input).success).toBe(true);
+    expect(bookingSchema.safeParse(input).success).toBe(false);
   });
 });
 
