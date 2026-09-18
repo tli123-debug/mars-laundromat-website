@@ -8,8 +8,9 @@
  * 20260827000000_status_simplification_and_delete_policy.sql,
  * 20260828000000_same_day_fee_reduction.sql,
  * 20260830000000_recurring_pickups_v1.sql,
- * 20260908000000_add_acquisition_source_to_bookings.sql, and
- * 20260917000000_booking_submission_idempotency.sql.
+ * 20260908000000_add_acquisition_source_to_bookings.sql,
+ * 20260917000000_booking_submission_idempotency.sql, and
+ * 20260919000000_calendar_sync_outbox.sql.
  * If the schema changes, update this alongside the migration (or regenerate via
  * `npx supabase gen types typescript --linked --schema public` once the project is CLI-linked).
  */
@@ -123,6 +124,14 @@ export interface Database {
           // 20260917000000_booking_submission_idempotency.sql. Null for
           // every non-website row (phone, recurring).
           client_submission_id: string | null;
+          // Durable — set ONCE at insert time by a BEFORE INSERT trigger
+          // from booking_source + calendar_sync_config at that instant,
+          // never recalculated later. See 20260919000000_calendar_sync_
+          // outbox.sql and src/lib/calendar-sync/desired-state.ts.
+          calendar_sync_eligible: boolean;
+          // Mutable staff override — no dedicated admin UI in this pass;
+          // set directly via SQL if a specific booking needs excluding.
+          calendar_sync_excluded: boolean;
         };
         Insert: {
           id?: string;
@@ -172,6 +181,10 @@ export interface Database {
           recurring_occurrence_date?: string | null;
           acquisition_source?: AcquisitionSource | null;
           client_submission_id?: string | null;
+          // Ignored even if supplied — the BEFORE INSERT trigger always
+          // overwrites this with its own computed value.
+          calendar_sync_eligible?: boolean;
+          calendar_sync_excluded?: boolean;
         };
         Update: {
           id?: string;
@@ -221,6 +234,8 @@ export interface Database {
           recurring_occurrence_date?: string | null;
           acquisition_source?: AcquisitionSource | null;
           client_submission_id?: string | null;
+          calendar_sync_eligible?: boolean;
+          calendar_sync_excluded?: boolean;
         };
         // created_by/updated_by/payment_verified_by reference auth.users, not a
         // public-schema table — included for parity with what the Supabase CLI
@@ -355,6 +370,132 @@ export interface Database {
           },
         ];
       };
+      calendar_sync_config: {
+        // Singleton — always exactly one row, id = true. Application
+        // code never selects from this table directly (see
+        // src/lib/calendar-sync/sync-worker.ts's own comment on why);
+        // typed here for completeness against the real schema.
+        Row: {
+          id: boolean;
+          enabled: boolean;
+          launched_at: string | null;
+          active_calendar_identity: string | null;
+          worker_user_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: boolean;
+          enabled?: boolean;
+          launched_at?: string | null;
+          active_calendar_identity?: string | null;
+          worker_user_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: boolean;
+          enabled?: boolean;
+          launched_at?: string | null;
+          active_calendar_identity?: string | null;
+          worker_user_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      calendar_sync_state: {
+        // The outbox — one row per (booking_id, leg). No FK to bookings
+        // (deliberately — see 20260919000000_calendar_sync_outbox.sql).
+        Row: {
+          id: string;
+          booking_id: string;
+          leg: "pickup" | "delivery";
+          desired_version: number;
+          synced_version: number | null;
+          desired_calendar_identity: string | null;
+          synced_calendar_identity: string | null;
+          desired_disposition: "absent" | "active" | "historical";
+          fulfilled: boolean;
+          desired_start: string | null;
+          desired_end: string | null;
+          desired_summary: string | null;
+          desired_location: string | null;
+          desired_phone: string | null;
+          desired_service_type: string | null;
+          desired_instructions: string | null;
+          ical_uid: string;
+          caldav_href: string | null;
+          remote_etag: string | null;
+          attempt_count: number;
+          next_attempt_at: string;
+          last_attempted_at: string | null;
+          last_success_at: string | null;
+          last_error: string | null;
+          claimed_at: string | null;
+          claimed_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          booking_id: string;
+          leg: "pickup" | "delivery";
+          desired_version?: number;
+          synced_version?: number | null;
+          desired_calendar_identity?: string | null;
+          synced_calendar_identity?: string | null;
+          desired_disposition: "absent" | "active" | "historical";
+          fulfilled?: boolean;
+          desired_start?: string | null;
+          desired_end?: string | null;
+          desired_summary?: string | null;
+          desired_location?: string | null;
+          desired_phone?: string | null;
+          desired_service_type?: string | null;
+          desired_instructions?: string | null;
+          ical_uid: string;
+          caldav_href?: string | null;
+          remote_etag?: string | null;
+          attempt_count?: number;
+          next_attempt_at?: string;
+          last_attempted_at?: string | null;
+          last_success_at?: string | null;
+          last_error?: string | null;
+          claimed_at?: string | null;
+          claimed_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          booking_id?: string;
+          leg?: "pickup" | "delivery";
+          desired_version?: number;
+          synced_version?: number | null;
+          desired_calendar_identity?: string | null;
+          synced_calendar_identity?: string | null;
+          desired_disposition?: "absent" | "active" | "historical";
+          fulfilled?: boolean;
+          desired_start?: string | null;
+          desired_end?: string | null;
+          desired_summary?: string | null;
+          desired_location?: string | null;
+          desired_phone?: string | null;
+          desired_service_type?: string | null;
+          desired_instructions?: string | null;
+          ical_uid?: string;
+          caldav_href?: string | null;
+          remote_etag?: string | null;
+          attempt_count?: number;
+          next_attempt_at?: string;
+          last_attempted_at?: string | null;
+          last_success_at?: string | null;
+          last_error?: string | null;
+          claimed_at?: string | null;
+          claimed_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     // generate_due_recurring_bookings() (20260830000000_recurring_pickups_v1.sql)
@@ -401,6 +542,19 @@ export interface Database {
           p_acquisition_source: string | null;
         };
         Returns: { booking_id: string; outcome: string }[];
+      };
+      // Owner-only (no anon/authenticated grant) — run manually via the
+      // Supabase SQL editor per the launch runbook, never called from
+      // application code. Typed here anyway for completeness/documentation.
+      enable_calendar_sync: {
+        Args: { p_calendar_identity?: string | null };
+        Returns: undefined;
+      };
+      // The calendar-sync worker's lease-based claim — see
+      // src/lib/calendar-sync/sync-worker.ts.
+      claim_calendar_sync_batch: {
+        Args: { p_limit: number; p_claimed_by: string; p_lease_seconds?: number };
+        Returns: Database["public"]["Tables"]["calendar_sync_state"]["Row"][];
       };
     };
     Enums: Record<string, never>;

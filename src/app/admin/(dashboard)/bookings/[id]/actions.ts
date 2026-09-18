@@ -1,10 +1,12 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { createClient } from "@/lib/supabase/server";
+import { triggerImmediateCalendarSync } from "@/lib/calendar-sync/trigger-immediate-sync";
 import { isValidAcquisitionSourceUpdate } from "@/lib/acquisition-source";
 import {
   buildServiceQuoteUpdatePayload,
@@ -108,6 +110,10 @@ export async function approveRequestedTime(bookingId: string) {
     return { error: "Something went wrong updating that booking." };
   }
 
+  // Best-effort — the durable outbox trigger already marked calendar work
+  // pending atomically with the update above; this just nudges it to run
+  // now instead of waiting for the ~5-minute recovery sweep.
+  after(() => triggerImmediateCalendarSync());
   revalidateBookingPaths(bookingId);
   return { error: null };
 }
@@ -155,6 +161,7 @@ export async function saveProposedTime(bookingId: string, input: unknown) {
     return { error: "Something went wrong updating that booking." };
   }
 
+  after(() => triggerImmediateCalendarSync());
   revalidateBookingPaths(bookingId);
   return { error: null };
 }
@@ -193,6 +200,7 @@ export async function markTimesConfirmed(bookingId: string) {
     return { error: "Something went wrong updating that booking." };
   }
 
+  after(() => triggerImmediateCalendarSync());
   revalidateBookingPaths(bookingId);
   return { error: null };
 }
@@ -223,6 +231,7 @@ export async function clearProposedTime(bookingId: string) {
     return { error: "Something went wrong updating that booking." };
   }
 
+  after(() => triggerImmediateCalendarSync());
   revalidateBookingPaths(bookingId);
   return { error: null };
 }
@@ -322,6 +331,7 @@ export async function saveProposedDeliveryTime(bookingId: string, input: unknown
     return { error: "Something went wrong updating that booking." };
   }
 
+  after(() => triggerImmediateCalendarSync());
   revalidateBookingPaths(bookingId);
   return { error: null };
 }
@@ -551,6 +561,11 @@ export async function deleteBooking(bookingId: string) {
     return { error: "Something went wrong deleting that booking." };
   }
 
+  // The AFTER DELETE trigger already marked both legs' outbox rows
+  // absent atomically with the delete above — this just nudges the
+  // removal to happen on Apple's side promptly instead of waiting for
+  // the recovery sweep.
+  after(() => triggerImmediateCalendarSync());
   revalidatePath("/admin/today");
   revalidatePath("/admin/bookings");
   redirect("/admin/bookings");

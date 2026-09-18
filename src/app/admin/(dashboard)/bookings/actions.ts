@@ -1,10 +1,12 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { createClient } from "@/lib/supabase/server";
 import { buildMarkPaidPayload, buildMarkUnpaidPayload } from "@/lib/payment";
 import { canAdvanceToStatus, hasRecordedPayment } from "@/lib/time-proposal-validation";
+import { triggerImmediateCalendarSync } from "@/lib/calendar-sync/trigger-immediate-sync";
 import type { BookingStatus, PaymentMethod } from "@/types/database.types";
 
 const VALID_STATUSES: BookingStatus[] = [
@@ -99,6 +101,10 @@ export async function updateBookingStatus(bookingId: string, status: BookingStat
     }
   }
 
+  // Best-effort — the durable outbox trigger already marked calendar work
+  // pending atomically with whichever update above actually ran; this
+  // just nudges it to run now instead of waiting for the recovery sweep.
+  after(() => triggerImmediateCalendarSync());
   revalidateBookingPaths(bookingId);
   return { error: null };
 }
