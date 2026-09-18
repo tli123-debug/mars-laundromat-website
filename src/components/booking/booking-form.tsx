@@ -514,7 +514,7 @@ export function BookingForm({
         </div>
       )}
 
-      <fieldset disabled={isPending} className="contents">
+      <fieldset disabled={isPending} className="m-0 min-w-0 border-0 p-0 space-y-6">
         <div className="hidden" aria-hidden="true">
           <Label htmlFor="companyWebsite">Company website</Label>
           <Input
