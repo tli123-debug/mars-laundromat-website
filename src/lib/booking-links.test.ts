@@ -416,28 +416,30 @@ describe("quote message remains unchanged by this task", () => {
 
 describe("buildRecurringOfferMessage", () => {
   it("matches the exact owner-approved wording and line-break structure", () => {
-    const message = buildRecurringOfferMessage("Jane Rivera");
+    const message = buildRecurringOfferMessage();
     expect(message).toBe(
-      "Hi Jane Rivera, this is Mars Laundromat.\n\n" +
-        "Thank you for choosing us. We hope everything came back just the way you wanted.\n\n" +
-        "Quick note: we also offer recurring Wash & Fold pickup (weekly or every 2 weeks) if that'd ever be useful, so you don't have to book each time.\n\n" +
-        "No worries if not. Just let us know if you're interested, no reply needed otherwise."
+      "Thank you for choosing us. We hope everything came back just the way you wanted.\n\n" +
+        "Quick note: we can set up a recurring pickup (weekly or every two weeks) so you don't have to manually book each time.\n\n" +
+        "Let us know if you're interested, no reply needed otherwise. Thanks again :)"
     );
   });
 
-  it("always says Wash & Fold, regardless of what service the source order actually was — the function takes no service-type parameter at all", () => {
-    // There is no serviceType argument to pass a 'both' value into in the
-    // first place — this test documents that omission is deliberate, not
-    // an oversight, per the locked rule that recurring offers are always
-    // Wash & Fold-only wording. Eligibility (including for a completed
-    // Both order) is decided separately by isEligibleForRecurringOffer().
-    expect(buildRecurringOfferMessage.length).toBe(1);
-    expect(buildRecurringOfferMessage("Anyone")).toContain("recurring Wash & Fold pickup");
-    expect(buildRecurringOfferMessage("Anyone")).not.toContain("Both Services");
+  it("takes no arguments — deliberately generic, not personalized or service-type-specific", () => {
+    // No customerName: sent within an existing SMS thread the customer
+    // already recognizes, so it skips the "Hi {name}, this is Mars
+    // Laundromat" opener every other assisted text in this file uses. No
+    // serviceType either: it deliberately says "recurring pickup," not
+    // "recurring Wash & Fold," even though every occurrence Recurring V1
+    // actually generates is Wash & Fold only (see
+    // generate_due_recurring_bookings()) — an owner-approved choice to
+    // keep the offer feeling broad, not a claim dry cleaning recurs too.
+    expect(buildRecurringOfferMessage.length).toBe(0);
+    expect(buildRecurringOfferMessage()).not.toContain("Wash & Fold");
+    expect(buildRecurringOfferMessage()).not.toContain("Hi ");
   });
 
   it("the message template itself stays English-only, unlike the bilingual admin-facing button labels", () => {
-    const message = buildRecurringOfferMessage("Jane Rivera");
+    const message = buildRecurringOfferMessage();
     // eslint-disable-next-line no-misleading-character-class
     expect(message).not.toMatch(/[一-鿿]/);
   });
@@ -445,22 +447,22 @@ describe("buildRecurringOfferMessage", () => {
 
 describe("bookingRecurringOfferTextHref", () => {
   it("combines the phone and message into one properly-encoded sms: link", () => {
-    const href = bookingRecurringOfferTextHref("(718) 555-0134", "Jane Rivera");
+    const href = bookingRecurringOfferTextHref("(718) 555-0134");
     expect(href.startsWith("sms:7185550134?body=")).toBe(true);
     const decoded = decodeURIComponent(href.split("?body=")[1]);
-    expect(decoded).toBe(buildRecurringOfferMessage("Jane Rivera"));
+    expect(decoded).toBe(buildRecurringOfferMessage());
   });
 
   it("round-trips through encode/decode without corrupting punctuation, apostrophes, or line breaks", () => {
-    const href = bookingRecurringOfferTextHref("7185550134", "Jane Rivera");
+    const href = bookingRecurringOfferTextHref("7185550134");
     const decoded = decodeURIComponent(href.split("?body=")[1]);
-    expect(decoded).toContain("Quick note: we also offer recurring Wash & Fold pickup (weekly or every 2 weeks) if that'd ever be useful, so you don't have to book each time.");
-    expect(decoded).toContain("No worries if not. Just let us know if you're interested, no reply needed otherwise.");
-    expect(decoded.split("\n\n")).toHaveLength(4);
+    expect(decoded).toContain("Quick note: we can set up a recurring pickup (weekly or every two weeks) so you don't have to manually book each time.");
+    expect(decoded).toContain("Let us know if you're interested, no reply needed otherwise. Thanks again :)");
+    expect(decoded.split("\n\n")).toHaveLength(3);
   });
 
   it("never marks anything as sent — this is a plain sms: link with no side effect of its own", () => {
-    const href = bookingRecurringOfferTextHref("7185550134", "Jane Rivera");
+    const href = bookingRecurringOfferTextHref("7185550134");
     expect(href.startsWith("sms:")).toBe(true);
     expect(href).not.toContain("sent=");
   });

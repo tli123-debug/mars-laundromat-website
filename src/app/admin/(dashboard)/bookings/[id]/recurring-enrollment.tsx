@@ -35,7 +35,6 @@ const FREQUENCY_OPTIONS: { value: RecurringFrequency; label: string }[] = [
 
 export function RecurringEnrollment({
   bookingId,
-  customerName,
   customerPhone,
   eligible,
   existingSchedule,
@@ -44,7 +43,6 @@ export function RecurringEnrollment({
   defaultDeliveryTime,
 }: {
   bookingId: string;
-  customerName: string;
   customerPhone: string;
   eligible: boolean;
   existingSchedule: { status: RecurringScheduleStatus; frequency: RecurringFrequency } | null;
@@ -110,7 +108,7 @@ export function RecurringEnrollment({
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         <Button asChild size="sm" variant="outline">
-          <a href={bookingRecurringOfferTextHref(customerPhone, customerName)}>
+          <a href={bookingRecurringOfferTextHref(customerPhone)}>
             Text Thank You &amp; Recurring Offer 感谢及定期服务短信
           </a>
         </Button>

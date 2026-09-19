@@ -264,27 +264,31 @@ export function bookingProposedDeliveryTextHref(
 
 /**
  * The exact owner-approved recurring-pickup offer, sent once after a
- * completed order. Deliberately not parameterized by service type — it
- * always says "recurring Wash & Fold," even for a completed Both Services
- * order, since Recurring V1 never covers Dry Cleaning; the caller
- * (isEligibleForRecurringOffer in recurring-schedule.ts) is what decides
- * whether this offer should be shown at all for a given booking, not this
- * function. No customer reply is ever interpreted automatically — this
- * only opens a prefilled message for staff to review and send by hand,
- * same as every other assisted-text button in this app.
+ * completed order. Not parameterized by customer name or service type:
+ * it deliberately skips a "Hi {name}, this is Mars Laundromat" opener
+ * (it's sent within an existing SMS thread the customer already
+ * recognizes), and it deliberately says "recurring pickup" rather than
+ * "recurring Wash & Fold" — an owner-approved choice to keep the offer
+ * feeling broad and low-pressure, even though every occurrence Recurring
+ * V1 actually generates is Wash & Fold only (see
+ * generate_due_recurring_bookings() in the Checkpoint 1 migration). The
+ * caller (isEligibleForRecurringOffer in recurring-schedule.ts) is what
+ * decides whether this offer should be shown at all for a given booking,
+ * not this function. No customer reply is ever interpreted automatically
+ * — this only opens a prefilled message for staff to review and send by
+ * hand, same as every other assisted-text button in this app.
  */
-export function buildRecurringOfferMessage(customerName: string): string {
+export function buildRecurringOfferMessage(): string {
   return (
-    `Hi ${customerName}, this is Mars Laundromat.\n\n` +
     `Thank you for choosing us. We hope everything came back just the way you wanted.\n\n` +
-    `Quick note: we also offer recurring Wash & Fold pickup (weekly or every 2 weeks) if that'd ever be useful, so you don't have to book each time.\n\n` +
-    `No worries if not. Just let us know if you're interested, no reply needed otherwise.`
+    `Quick note: we can set up a recurring pickup (weekly or every two weeks) so you don't have to manually book each time.\n\n` +
+    `Let us know if you're interested, no reply needed otherwise. Thanks again :)`
   );
 }
 
 /** SMS deep link for the assisted recurring-offer button — see buildRecurringOfferMessage(). */
-export function bookingRecurringOfferTextHref(phone: string, customerName: string): string {
-  return bookingSmsHref(phone, buildRecurringOfferMessage(customerName));
+export function bookingRecurringOfferTextHref(phone: string): string {
+  return bookingSmsHref(phone, buildRecurringOfferMessage());
 }
 
 /**

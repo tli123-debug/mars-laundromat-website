@@ -183,7 +183,6 @@ export default async function AdminBookingDetailPage(props: PageProps<"/admin/bo
         <div className="mt-3">
           <RecurringEnrollment
             bookingId={booking.id}
-            customerName={booking.name}
             customerPhone={booking.phone}
             eligible={isEligibleForRecurringOffer(booking, hasActiveOrPausedSchedule)}
             existingSchedule={
