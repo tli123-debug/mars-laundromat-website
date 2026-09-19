@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "email:dev": "email dev --dir ./src/emails",
-    "calendar:discover": "tsx scripts/discover-caldav-calendars.ts"
+    "calendar:discover": "tsx scripts/discover-caldav-calendars.ts",
+    "calendar:sync-once": "tsx scripts/run-calendar-sync-once.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.0",

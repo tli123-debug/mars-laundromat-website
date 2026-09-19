@@ -106,6 +106,10 @@ begin
      or (select count(*) from public.calendar_sync_state where booking_id = v_booking_id and (desired_start is null or desired_end is null)) <> 0 then
     raise exception 'confirmed booking did not produce two scheduled active legs';
   end if;
+  if (select desired_summary from public.calendar_sync_state where booking_id = v_booking_id and leg = 'pickup') <> '🧺 PICKUP — Calendar Test'
+     or (select desired_summary from public.calendar_sync_state where booking_id = v_booking_id and leg = 'delivery') <> '🚚 DELIVERY — Calendar Test' then
+    raise exception 'calendar event titles are not visually distinct';
+  end if;
 
   select desired_version into v_pickup_version
     from public.calendar_sync_state where booking_id = v_booking_id and leg = 'pickup';

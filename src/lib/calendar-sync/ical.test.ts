@@ -4,7 +4,7 @@ import { buildEventIcs } from "./ical";
 function baseContent(overrides: Partial<Parameters<typeof buildEventIcs>[0]> = {}) {
   return {
     uid: "mars-booking-11111111-1111-1111-1111-111111111111-pickup@marslaundromat.com",
-    summary: "PICKUP — Jane Smith",
+    summary: "🧺 PICKUP — Jane Smith",
     start: new Date("2026-06-15T14:00:00Z"),
     end: new Date("2026-06-15T15:00:00Z"),
     location: "123 7th Ave, Brooklyn, NY 11215",
@@ -54,7 +54,7 @@ describe("buildEventIcs — required fields", () => {
 
   it("includes the summary and location", () => {
     const ics = buildEventIcs(baseContent());
-    expect(ics).toContain("SUMMARY:PICKUP — Jane Smith");
+    expect(ics).toContain("SUMMARY:🧺 PICKUP — Jane Smith");
     expect(ics).toContain("LOCATION:123 7th Ave\\, Brooklyn\\, NY 11215");
   });
 

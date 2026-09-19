@@ -397,13 +397,13 @@ begin
 
   perform public.upsert_calendar_sync_leg(
     new.id, 'pickup', v_calendar_identity, v_pickup_disposition, v_pickup_fulfilled,
-    v_pickup_start, v_pickup_end, 'PICKUP — ' || new.name, new.address,
+    v_pickup_start, v_pickup_end, '🧺 PICKUP — ' || new.name, new.address,
     new.phone, new.service_type, new.special_instructions,
     'mars-booking-' || new.id::text || '-pickup@marslaundromat.com'
   );
   perform public.upsert_calendar_sync_leg(
     new.id, 'delivery', v_calendar_identity, v_delivery_disposition, v_delivery_fulfilled,
-    v_delivery_start, v_delivery_end, 'DELIVERY — ' || new.name, new.address,
+    v_delivery_start, v_delivery_end, '🚚 DELIVERY — ' || new.name, new.address,
     new.phone, new.service_type, new.special_instructions,
     'mars-booking-' || new.id::text || '-delivery@marslaundromat.com'
   );

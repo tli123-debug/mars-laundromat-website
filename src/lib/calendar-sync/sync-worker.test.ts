@@ -14,7 +14,7 @@ function baseRow(overrides: Partial<Parameters<typeof reconcileOneLeg>[0]> = {})
     desired_disposition: "active",
     desired_start: "2026-09-25T13:00:00.000Z",
     desired_end: "2026-09-25T14:00:00.000Z",
-    desired_summary: "PICKUP — Jane Smith",
+    desired_summary: "🧺 PICKUP — Jane Smith",
     desired_location: "123 7th Ave, Brooklyn, NY 11215",
     desired_phone: "(718) 555-0134",
     desired_service_type: "wash_and_fold",
