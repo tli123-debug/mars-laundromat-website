@@ -51,6 +51,10 @@ describe("normalizeAcquisitionSource", () => {
 });
 
 describe("ACQUISITION_SOURCE_FORM_OPTIONS", () => {
+  it("includes Reddit as a customer-selectable source", () => {
+    expect(ACQUISITION_SOURCE_FORM_OPTIONS).toContainEqual({ value: "reddit", label: "Reddit" });
+  });
+
   it("excludes the tracked-link-only sources", () => {
     const values = ACQUISITION_SOURCE_FORM_OPTIONS.map((option) => option.value);
     expect(values).not.toContain("google_ads");

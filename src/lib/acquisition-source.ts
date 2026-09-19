@@ -2,8 +2,9 @@ import type { AcquisitionSource } from "@/types/database.types";
 
 /**
  * The complete, exhaustive set of values acquisition_source may hold in the
- * database — mirrors bookings_acquisition_source_check in
- * supabase/migrations/20260908000000_add_acquisition_source_to_bookings.sql.
+ * database — mirrors bookings_acquisition_source_check, most recently
+ * widened in
+ * supabase/migrations/20260919120000_add_reddit_acquisition_source.sql.
  * Add a new source here and to that CHECK constraint together.
  */
 export const ACQUISITION_SOURCES: readonly AcquisitionSource[] = [
@@ -12,6 +13,7 @@ export const ACQUISITION_SOURCES: readonly AcquisitionSource[] = [
   "google_search_maps",
   "nextdoor",
   "facebook_instagram",
+  "reddit",
   "meta_ads",
   "apartment_flyer",
   "storefront",
@@ -56,6 +58,7 @@ export const ACQUISITION_SOURCE_FORM_OPTIONS: readonly AcquisitionSourceOption[]
   { value: "google_search_maps", label: "Google Search or Maps" },
   { value: "nextdoor", label: "Nextdoor" },
   { value: "facebook_instagram", label: "Facebook or Instagram" },
+  { value: "reddit", label: "Reddit" },
   { value: "apartment_flyer", label: "Apartment or building flyer" },
   { value: "storefront", label: "Walked past the store" },
   { value: "referral", label: "Friend or family" },
@@ -76,6 +79,7 @@ export const ACQUISITION_SOURCE_ADMIN_LABELS: Record<AcquisitionSource, string> 
   google_search_maps: "Google Search / Maps 谷歌搜索/地图",
   nextdoor: "Nextdoor",
   facebook_instagram: "Facebook / Instagram",
+  reddit: "Reddit",
   meta_ads: "Meta Ads Meta广告",
   apartment_flyer: "Apartment Flyer 公寓传单",
   storefront: "Storefront / Walk-by 路过店面",

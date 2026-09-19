@@ -9,8 +9,9 @@
  * 20260828000000_same_day_fee_reduction.sql,
  * 20260830000000_recurring_pickups_v1.sql,
  * 20260908000000_add_acquisition_source_to_bookings.sql,
- * 20260917000000_booking_submission_idempotency.sql, and
- * 20260919000000_calendar_sync_outbox.sql.
+ * 20260917000000_booking_submission_idempotency.sql,
+ * 20260919000000_calendar_sync_outbox.sql, and
+ * 20260919120000_add_reddit_acquisition_source.sql.
  * If the schema changes, update this alongside the migration (or regenerate via
  * `npx supabase gen types typescript --linked --schema public` once the project is CLI-linked).
  */
@@ -48,6 +49,7 @@ export type AcquisitionSource =
   | "google_search_maps"
   | "nextdoor"
   | "facebook_instagram"
+  | "reddit"
   | "meta_ads"
   | "apartment_flyer"
   | "storefront"

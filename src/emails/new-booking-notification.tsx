@@ -36,6 +36,7 @@ const ACQUISITION_SOURCE_LABELS: Record<AcquisitionSource, string> = {
   google_search_maps: "Google Search or Maps",
   nextdoor: "Nextdoor",
   facebook_instagram: "Facebook or Instagram",
+  reddit: "Reddit",
   meta_ads: "Meta Ads",
   apartment_flyer: "Apartment or building flyer",
   storefront: "Walked past the store",
