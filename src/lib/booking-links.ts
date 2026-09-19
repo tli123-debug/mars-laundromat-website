@@ -277,8 +277,8 @@ export function buildRecurringOfferMessage(customerName: string): string {
   return (
     `Hi ${customerName}, this is Mars Laundromat.\n\n` +
     `Thank you for choosing us. We hope everything came back just the way you wanted.\n\n` +
-    `If you'd like, we can set up a recurring Wash & Fold pickup every week or every two weeks, so you won't need to book each time.\n\n` +
-    `Reply WEEKLY or EVERY 2 WEEKS if you're interested, or let us know if you have any questions.`
+    `Quick note: we also offer recurring Wash & Fold pickup (weekly or every 2 weeks) if that'd ever be useful, so you don't have to book each time.\n\n` +
+    `No worries if not. Just let us know if you're interested, no reply needed otherwise.`
   );
 }
 

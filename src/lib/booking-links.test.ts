@@ -420,8 +420,8 @@ describe("buildRecurringOfferMessage", () => {
     expect(message).toBe(
       "Hi Jane Rivera, this is Mars Laundromat.\n\n" +
         "Thank you for choosing us. We hope everything came back just the way you wanted.\n\n" +
-        "If you'd like, we can set up a recurring Wash & Fold pickup every week or every two weeks, so you won't need to book each time.\n\n" +
-        "Reply WEEKLY or EVERY 2 WEEKS if you're interested, or let us know if you have any questions."
+        "Quick note: we also offer recurring Wash & Fold pickup (weekly or every 2 weeks) if that'd ever be useful, so you don't have to book each time.\n\n" +
+        "No worries if not. Just let us know if you're interested, no reply needed otherwise."
     );
   });
 
@@ -454,8 +454,8 @@ describe("bookingRecurringOfferTextHref", () => {
   it("round-trips through encode/decode without corrupting punctuation, apostrophes, or line breaks", () => {
     const href = bookingRecurringOfferTextHref("7185550134", "Jane Rivera");
     const decoded = decodeURIComponent(href.split("?body=")[1]);
-    expect(decoded).toContain("If you'd like, we can set up a recurring Wash & Fold pickup every week or every two weeks, so you won't need to book each time.");
-    expect(decoded).toContain("Reply WEEKLY or EVERY 2 WEEKS if you're interested, or let us know if you have any questions.");
+    expect(decoded).toContain("Quick note: we also offer recurring Wash & Fold pickup (weekly or every 2 weeks) if that'd ever be useful, so you don't have to book each time.");
+    expect(decoded).toContain("No worries if not. Just let us know if you're interested, no reply needed otherwise.");
     expect(decoded.split("\n\n")).toHaveLength(4);
   });
 
