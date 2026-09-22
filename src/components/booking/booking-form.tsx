@@ -27,6 +27,12 @@ import {
   type ServiceSpeed,
 } from "@/lib/validations/booking-schema";
 import {
+  BOOKING_ADD_ON_OPTIONS,
+  BOOKING_ADD_ONS_DEFAULT,
+  composeSpecialInstructions,
+  type BookingAddOns,
+} from "@/lib/booking-addons";
+import {
   addDays,
   getBrooklynToday,
   getSameDayEligibleWindows,
@@ -73,6 +79,34 @@ const SERVICE_SPEED_OPTIONS: { value: ServiceSpeed; label: string }[] = [
   { value: "same_day", label: `Same-Day Rush (+${formatDollars(SAME_DAY_FEE_CENTS)}, subject to approval)` },
 ];
 
+function AddOnCheckbox({
+  id,
+  label,
+  checked,
+  disabled,
+  onCheckedChange,
+}: {
+  id: string;
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <Checkbox
+        id={id}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={(value) => onCheckedChange(value === true)}
+      />
+      <Label htmlFor={id} className={`text-sm font-normal ${disabled ? "text-muted-foreground" : "text-foreground"}`}>
+        {label}
+      </Label>
+    </div>
+  );
+}
+
 export function BookingForm({
   trackedAcquisitionSource = null,
 }: {
@@ -112,6 +146,24 @@ export function BookingForm({
   const [phase, setPhase] = useState<"idle" | "succeeded">("idle");
   const [summary, setSummary] = useState<RequestedScheduleSummary | null>(null);
   const [inlineMessage, setInlineMessage] = useState<InlineMessage | null>(null);
+
+  // Deliberately NOT part of useForm/bookingSchema — these never reach the
+  // server as their own fields. attemptSubmit() folds whichever are checked
+  // into a summary line composed onto specialInstructions right before
+  // persisting/submitting, so the server only ever sees the same single
+  // text field it always has. See booking-addons.ts.
+  const [addOns, setAddOns] = useState<BookingAddOns>(BOOKING_ADD_ONS_DEFAULT);
+
+  function toggleAddOn(key: keyof BookingAddOns, checked: boolean) {
+    setAddOns((prev) => {
+      const next = { ...prev, [key]: checked };
+      // Bleaching only makes sense alongside separating — unchecking
+      // "separate" while "bleach" is still checked would leave a
+      // confusing state, so clear it too.
+      if (key === "separateWhitesBlacks" && !checked) next.bleachWhites = false;
+      return next;
+    });
+  }
 
   // Synchronous guard, checked and set before startTransition — closes the
   // gap between "user clicks" and useTransition's isPending actually
@@ -367,8 +419,21 @@ export function BookingForm({
    * stored; only onStartOver's clearStoredAttempt() makes room for a new
    * one.
    */
-  function attemptSubmit(values: BookingInput) {
+  function attemptSubmit(rawValues: BookingInput) {
     if (inFlightRef.current) return;
+    // Composed once, here, and used consistently for storage AND the
+    // actual submission from this point on — never recomposed from a
+    // second read of the (unchanged) textarea later. That keeps a Retry
+    // byte-identical to the original attempt, which matters: the server's
+    // dedup check compares special_instructions verbatim, and a retry that
+    // sent different text (e.g. because addOns had reset across a
+    // refresh) would misread as a genuine conflict instead of the same
+    // request. composeSpecialInstructions() is a no-op pass-through when
+    // no add-ons are checked, so this stays correct even then.
+    const values: BookingInput = {
+      ...rawValues,
+      specialInstructions: composeSpecialInstructions(addOns, rawValues.specialInstructions ?? ""),
+    };
     inFlightRef.current = true;
     const submissionId = getOrMintSubmissionId();
     persistPendingAttempt(submissionId, values);
@@ -439,6 +504,7 @@ export function BookingForm({
     // smsConsent, since a new request needs fresh consent.
     reset();
     setSelectResetKey((key) => key + 1);
+    setAddOns(BOOKING_ADD_ONS_DEFAULT);
     setInlineMessage(null);
     setSummary(null);
     setPhase("idle");
@@ -859,6 +925,39 @@ export function BookingForm({
             {...register("specialInstructions")}
           />
         </div>
+
+        <details className="group rounded-2xl border border-border p-4">
+          <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-semibold text-foreground marker:content-none [&::-webkit-details-marker]:hidden">
+            Optional add-ons &amp; preferences
+            <span aria-hidden="true" className="text-muted-foreground transition-transform group-open:rotate-90">
+              ›
+            </span>
+          </summary>
+          <div className="mt-4 grid gap-3">
+            {BOOKING_ADD_ON_OPTIONS.map((option) => {
+              const checkbox = (
+                <AddOnCheckbox
+                  key={option.key}
+                  id={`addon-${option.key}`}
+                  label={option.label}
+                  checked={addOns[option.key]}
+                  disabled={option.key === "bleachWhites" && !addOns.separateWhitesBlacks}
+                  onCheckedChange={(checked) => toggleAddOn(option.key, checked)}
+                />
+              );
+              // Nested and indented to show it depends on "Separate whites
+              // & blacks" just above it — the catalog already lists them
+              // adjacently, this only changes bleachWhites' own wrapper.
+              return option.key === "bleachWhites" ? (
+                <div key={option.key} className="ml-7">
+                  {checkbox}
+                </div>
+              ) : (
+                checkbox
+              );
+            })}
+          </div>
+        </details>
 
         {!hasTrackedAcquisitionSource && (
           <div className="grid gap-2">

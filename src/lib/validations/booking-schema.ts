@@ -73,7 +73,13 @@ export const bookingSchemaShape = z.object({
   smsConsent: z.literal(true, {
     error: "Please check the box to continue by text, or call us at +1 (929) 870-1166 instead",
   }),
-  specialInstructions: z.string().trim().max(1000).optional().or(z.literal("")),
+  // 1200, not 1000: the booking form composes an "Add-ons: ..." summary
+  // line (see composeSpecialInstructions() in booking-addons.ts) onto
+  // whatever the customer types before submitting. The longest possible
+  // summary line (every add-on checked) is 189 chars; 1200 leaves the
+  // customer's own free text at least as much room as the original 1000
+  // limit did, even in that worst case.
+  specialInstructions: z.string().trim().max(1200).optional().or(z.literal("")),
   // Fault-tolerant at parse time itself, not just shape-checked: .catch("")
   // means an overlong string OR a value of the wrong type entirely (e.g. a
   // hand-crafted request bypassing the client form) can never fail this
