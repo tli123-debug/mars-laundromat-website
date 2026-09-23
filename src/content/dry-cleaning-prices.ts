@@ -10,16 +10,16 @@ export interface DryCleaningPriceItem {
  * admin portal; this chart only sets customer expectations up front.
  */
 export const dryCleaningPrices: DryCleaningPriceItem[] = [
-  { item: "Laundry Shirt", priceCents: 300 },
-  { item: "Pants", priceCents: 500 },
-  { item: "Two-Piece Suit", priceCents: 1000 },
-  { item: "Dress", priceCents: 1000 },
-  { item: "Jacket", priceCents: 500 },
+  { item: "Laundry Shirt", priceCents: 400 },
+  { item: "Pants", priceCents: 600 },
+  { item: "Two-Piece Suit", priceCents: 1400 },
+  { item: "Dress", priceCents: 1400 },
+  { item: "Jacket", priceCents: 700 },
   { item: "Skirt", priceCents: 500 },
-  { item: "Blouse", priceCents: 500 },
-  { item: "Sweater", priceCents: 500 },
-  { item: "Coat", priceCents: 1500 },
-  { item: "Long Coat", priceCents: 2000 },
-  { item: "Tie", priceCents: 400 },
-  { item: "Dry-Cleaned Shirt", priceCents: 500 },
+  { item: "Blouse", priceCents: 700 },
+  { item: "Sweater", priceCents: 700 },
+  { item: "Coat", priceCents: 2200 },
+  { item: "Long Coat", priceCents: 2800 },
+  { item: "Tie", priceCents: 600 },
+  { item: "Dry-Cleaned Shirt", priceCents: 700 },
 ];
