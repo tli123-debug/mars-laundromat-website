@@ -54,7 +54,7 @@ describe("buildQuoteTextMessage", () => {
         "Your order total is $48.\n\n" +
         "Cash, Zelle, or Venmo accepted.\n" +
         "Zelle: 917-881-2623\n" +
-        "Venmo: @Yong-Li-234\n" +
+        "Venmo: @tli123\n" +
         "You can pay cash at the door when we deliver.\n\n" +
         "Please reply if you have any questions."
     );
@@ -74,7 +74,7 @@ describe("buildQuoteTextMessage", () => {
 
   it("lists both Zelle and Venmo in the 'accepted' sentence, each with its own detail line, in that order", () => {
     const message = buildQuoteTextMessage("Jane", 4800);
-    expect(message).toContain("Cash, Zelle, or Venmo accepted.\nZelle: 917-881-2623\nVenmo: @Yong-Li-234\n");
+    expect(message).toContain("Cash, Zelle, or Venmo accepted.\nZelle: 917-881-2623\nVenmo: @tli123\n");
   });
 
   it("includes the confirmed delivery date/window when passed, inserted between the total and the payment wording", () => {
@@ -85,7 +85,7 @@ describe("buildQuoteTextMessage", () => {
         "We'll deliver it back Thu, Sep 3, 6:00 PM–7:00 PM.\n\n" +
         "Cash, Zelle, or Venmo accepted.\n" +
         "Zelle: 917-881-2623\n" +
-        "Venmo: @Yong-Li-234\n" +
+        "Venmo: @tli123\n" +
         "You can pay cash at the door when we deliver.\n\n" +
         "Please reply if you have any questions."
     );
@@ -114,7 +114,7 @@ describe("buildQuoteTextMessage", () => {
           "Your order total is $79.50 (53 lbs × $1.50/lb).\n\n" +
           "Cash, Zelle, or Venmo accepted.\n" +
           "Zelle: 917-881-2623\n" +
-          "Venmo: @Yong-Li-234\n" +
+          "Venmo: @tli123\n" +
           "You can pay cash at the door when we deliver.\n\n" +
           "Please reply if you have any questions."
       );
@@ -410,7 +410,7 @@ describe("quote message remains unchanged by this task", () => {
     const message = buildQuoteTextMessage("Jane Rivera", 4800);
     expect(message).toContain("Cash, Zelle, or Venmo accepted.");
     expect(message).toContain("Zelle: 917-881-2623");
-    expect(message).toContain("Venmo: @Yong-Li-234");
+    expect(message).toContain("Venmo: @tli123");
   });
 });
 

@@ -8,4 +8,4 @@
 export const ZELLE_RECIPIENT_DETAIL: string | null = "917-881-2623";
 
 /** Venmo handle, without the leading "@" — buildQuoteTextMessage() adds it. */
-export const VENMO_RECIPIENT_DETAIL: string | null = "Yong-Li-234";
+export const VENMO_RECIPIENT_DETAIL: string | null = "tli123";
