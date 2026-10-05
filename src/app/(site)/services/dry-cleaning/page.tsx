@@ -9,7 +9,7 @@ import { formatDollars } from "@/lib/format-currency";
 export const metadata: Metadata = {
   title: "Dry Cleaning & Ironing",
   description:
-    "Dry cleaning & ironing, picked up and delivered in Park Slope, Brooklyn. Counted, inspected, and quoted before it's sent to the cleaner.",
+    "Dry Cleaning & Ironing pickup and delivery across Park Slope and nearby Brooklyn neighborhoods. Counted, inspected, and quoted before it's sent to the cleaner.",
 };
 
 export default function DryCleaningPage() {

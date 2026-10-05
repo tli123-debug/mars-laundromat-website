@@ -294,12 +294,12 @@ export function bookingRecurringOfferTextHref(phone: string): string {
 /**
  * Keyless Google Maps search URL — no API key or billing dependency.
  * A customer's free-text address has no structured city/state field, so an
- * address that doesn't already mention Brooklyn gets the neighborhood/city/
- * state appended to anchor the query — but not if it's already there, which
- * would otherwise produce a garbled, duplicated query.
+ * address that doesn't already mention Brooklyn gets a city/state anchor.
+ * The map anchor deliberately stays independent from the service-area label:
+ * customers may now be in any one of several nearby Brooklyn neighborhoods.
  */
 export function bookingMapsHref(address: string): string {
   const alreadyAnchored = /brooklyn/i.test(address);
-  const query = alreadyAnchored ? address : `${address}, ${siteConfig.coverageArea.label}`;
+  const query = alreadyAnchored ? address : `${address}, ${siteConfig.coverageArea.mapAnchor}`;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }

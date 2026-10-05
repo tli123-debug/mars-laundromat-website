@@ -1,8 +1,8 @@
 export const siteConfig = {
   name: "Mars Laundromat",
-  tagline: "Wash & fold, pickup & delivery in Park Slope, Brooklyn",
+  tagline: "Wash & fold, dry cleaning, pickup & delivery across nearby Brooklyn",
   description:
-    "A family-owned laundromat serving Park Slope, Brooklyn with wash & fold drop-off and pickup & delivery service.",
+    "A family-owned Park Slope laundromat offering wash & fold, dry cleaning, and free pickup & delivery across Park Slope and nearby Brooklyn neighborhoods.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
 
   phoneNumber: "+1 (929) 870-1166",
@@ -21,11 +21,25 @@ export const siteConfig = {
   ],
 
   coverageArea: {
-    avenues: "4th Ave to 8th Ave",
-    streets: "1st St to 20th St",
-    label: "Park Slope, Brooklyn",
+    shortLabel: "Park Slope and nearby Brooklyn neighborhoods",
+    neighborhoods: [
+      "Park Slope",
+      "South Slope",
+      "Gowanus",
+      "Greenwood Heights",
+      "Windsor Terrace",
+      "Carroll Gardens",
+      "Cobble Hill",
+      "Boerum Hill",
+      "Prospect Heights",
+    ],
+    mapAnchor: "Brooklyn, NY",
   },
 } as const;
+
+export function coverageAreaList(): string {
+  return siteConfig.coverageArea.neighborhoods.join(", ");
+}
 
 export function phoneHref(): string {
   return `tel:${siteConfig.phoneNumber.replace(/\D/g, "")}`;

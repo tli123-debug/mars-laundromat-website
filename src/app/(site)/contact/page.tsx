@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { contact } from "@/content/contact";
-import { fullAddress, phoneHref, siteConfig } from "@/content/site-config";
+import {
+  coverageAreaList,
+  fullAddress,
+  phoneHref,
+  siteConfig,
+} from "@/content/site-config";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -68,7 +73,8 @@ export default function ContactPage() {
               <div>
                 <dt className="font-semibold">Delivery coverage</dt>
                 <dd className="mt-1 text-muted-foreground">
-                  {siteConfig.coverageArea.avenues}, {siteConfig.coverageArea.streets}
+                  {siteConfig.coverageArea.shortLabel}
+                  <span className="mt-1 block">{coverageAreaList()}</span>
                 </dd>
               </div>
             </dl>

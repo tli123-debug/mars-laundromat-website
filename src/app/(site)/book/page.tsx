@@ -4,7 +4,8 @@ import { normalizeAcquisitionSource } from "@/lib/acquisition-source";
 
 export const metadata: Metadata = {
   title: "Book Now",
-  description: "Schedule a wash & fold pickup and delivery in Park Slope, Brooklyn.",
+  description:
+    "Schedule Wash & Fold or Dry Cleaning & Ironing pickup and delivery across Park Slope and nearby Brooklyn neighborhoods.",
 };
 
 function first(value: string | string[] | undefined): string | undefined {

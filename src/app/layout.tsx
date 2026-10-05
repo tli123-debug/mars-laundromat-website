@@ -17,9 +17,9 @@ const fraunces = Fraunces({
 });
 
 const defaultTitle =
-  "Mars Laundromat | Wash & Fold, Pickup & Delivery in Park Slope, Brooklyn";
+  "Mars Laundromat | Laundry Pickup & Delivery in Brooklyn";
 const defaultDescription =
-  "Family-owned laundromat in Park Slope, Brooklyn. Wash & fold drop-off and pickup & delivery, done with care by people who know your name.";
+  "Family-owned Park Slope laundromat offering Wash & Fold, Dry Cleaning & Ironing, and free pickup & delivery across Park Slope and nearby Brooklyn neighborhoods.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),

@@ -469,16 +469,16 @@ describe("bookingRecurringOfferTextHref", () => {
 });
 
 describe("bookingMapsHref", () => {
-  it("appends the neighborhood/city/state when the address doesn't mention Brooklyn", () => {
+  it("appends a Brooklyn city/state anchor when the address doesn't mention Brooklyn", () => {
     const href = bookingMapsHref("123 7th Ave, Apt 4B");
-    expect(href).toContain(encodeURIComponent("123 7th Ave, Apt 4B, Park Slope, Brooklyn"));
+    expect(href).toContain(encodeURIComponent("123 7th Ave, Apt 4B, Brooklyn, NY"));
   });
 
   it("does not duplicate the suffix when the address already says Brooklyn", () => {
     const href = bookingMapsHref("123 7th Ave, Brooklyn, NY 11215");
     const decoded = decodeURIComponent(href.split("query=")[1]);
     expect(decoded).toBe("123 7th Ave, Brooklyn, NY 11215");
-    expect(decoded).not.toContain("Park Slope, Brooklyn, Park Slope, Brooklyn");
+    expect(decoded).not.toContain("Brooklyn, NY, Brooklyn, NY");
   });
 
   it("the Brooklyn check is case-insensitive", () => {

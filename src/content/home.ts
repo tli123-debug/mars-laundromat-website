@@ -4,6 +4,7 @@ import {
 } from "@/lib/pricing/calculate-quote";
 import { DRY_CLEANING_MINIMUM_CENTS } from "@/lib/pricing/dry-cleaning-charge";
 import { formatDollars } from "@/lib/format-currency";
+import { coverageAreaList } from "@/content/site-config";
 
 // Deliberately not a single "from $X" figure — the cheapest chart entry
 // (Laundry Shirt, $3) is washed/dried/ironed, not dry-cleaned, so leading
@@ -12,10 +13,10 @@ const dryCleaningMinimumNote = `${formatDollars(DRY_CLEANING_MINIMUM_CENTS)} min
 
 export const home = {
   hero: {
-    eyebrow: "Park Slope, Brooklyn",
+    eyebrow: "Park Slope and nearby Brooklyn",
     headline: "Your laundry, cared for like family.",
     subheadline:
-      "Wash & fold and dry cleaning, with free pickup & delivery across Park Slope. Family-owned, community-rooted, and never run by an app.",
+      "Wash & fold and dry cleaning, with free pickup & delivery across Park Slope and surrounding Brooklyn neighborhoods. Family-owned, community-rooted, and never run by an app.",
     primaryCta: { label: "Book a Pickup", href: "/book" },
     secondaryCta: { label: "Call us", href: "tel" },
   },
@@ -84,8 +85,7 @@ export const home = {
     },
     {
       title: "Free pickup & delivery",
-      description:
-        "Covering 4th to 8th Ave, 1st to 20th St, right in the heart of Park Slope. Schedule a window that works for you.",
+      description: `Serving ${coverageAreaList()}. Not sure whether your address is covered? Call or text us and we'll be happy to check.`,
     },
     {
       title: "Careful, consistent wash & fold",

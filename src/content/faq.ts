@@ -1,3 +1,5 @@
+import { coverageAreaList } from "@/content/site-config";
+
 export const faq = [
   {
     question: "How does pickup & delivery pricing work?",
@@ -6,8 +8,7 @@ export const faq = [
   },
   {
     question: "What's your coverage area?",
-    answer:
-      "We offer free pickup & delivery from 4th Avenue to 8th Avenue, and 1st Street to 20th Street, in Park Slope. Just outside that range? Give us a call. We may still be able to make it work.",
+    answer: `We offer free pickup & delivery throughout ${coverageAreaList()}. If you're nearby but don't see your neighborhood listed, call or text us. We may still be able to accommodate your address.`,
   },
   {
     question: "What if I'm not home for my delivery window?",

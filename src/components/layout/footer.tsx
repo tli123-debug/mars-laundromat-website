@@ -81,7 +81,7 @@ export function Footer() {
 
         <div className="mt-10 border-t border-border pt-6 text-xs text-muted-foreground">
           © {new Date().getFullYear()} {siteConfig.name}. Proudly serving{" "}
-          {siteConfig.coverageArea.label}.
+          {siteConfig.coverageArea.shortLabel}.
         </div>
       </div>
     </footer>
