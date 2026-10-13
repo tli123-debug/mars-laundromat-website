@@ -280,9 +280,9 @@ export function bookingProposedDeliveryTextHref(
  */
 export function buildRecurringOfferMessage(): string {
   return (
-    `Thank you for choosing us. We hope everything came back just the way you wanted.\n\n` +
-    `Quick note: we can set up a recurring pickup (weekly or every two weeks) so you don't have to manually book each time.\n\n` +
-    `Let us know if you're interested, no reply needed otherwise. Thanks again :)`
+    `Thank you for choosing Mars Laundromat. We hope everything came back just the way you wanted.\n\n` +
+    `If laundry is a regular need, we can reserve a weekly pickup or a pickup every two weeks, so you don't have to book each time. You can skip, pause, or cancel anytime by texting us.\n\n` +
+    `Would either schedule be helpful? No reply needed if not :)`
   );
 }
 

@@ -418,9 +418,9 @@ describe("buildRecurringOfferMessage", () => {
   it("matches the exact owner-approved wording and line-break structure", () => {
     const message = buildRecurringOfferMessage();
     expect(message).toBe(
-      "Thank you for choosing us. We hope everything came back just the way you wanted.\n\n" +
-        "Quick note: we can set up a recurring pickup (weekly or every two weeks) so you don't have to manually book each time.\n\n" +
-        "Let us know if you're interested, no reply needed otherwise. Thanks again :)"
+      "Thank you for choosing Mars Laundromat. We hope everything came back just the way you wanted.\n\n" +
+        "If laundry is a regular need, we can reserve a weekly pickup or a pickup every two weeks, so you don't have to book each time. You can skip, pause, or cancel anytime by texting us.\n\n" +
+        "Would either schedule be helpful? No reply needed if not :)"
     );
   });
 
@@ -456,8 +456,9 @@ describe("bookingRecurringOfferTextHref", () => {
   it("round-trips through encode/decode without corrupting punctuation, apostrophes, or line breaks", () => {
     const href = bookingRecurringOfferTextHref("7185550134");
     const decoded = decodeURIComponent(href.split("?body=")[1]);
-    expect(decoded).toContain("Quick note: we can set up a recurring pickup (weekly or every two weeks) so you don't have to manually book each time.");
-    expect(decoded).toContain("Let us know if you're interested, no reply needed otherwise. Thanks again :)");
+    expect(decoded).toContain("You can skip, pause, or cancel anytime by texting us.");
+    expect(decoded).toContain("Would either schedule be helpful? No reply needed if not :)");
+    expect(decoded).not.toContain("—");
     expect(decoded.split("\n\n")).toHaveLength(3);
   });
 
