@@ -14,7 +14,7 @@ const dryCleaningMinimumNote = `${formatDollars(DRY_CLEANING_MINIMUM_CENTS)} min
 export const home = {
   hero: {
     eyebrow: "Park Slope and nearby Brooklyn",
-    headline: "Your laundry picked up and delivered right to your door.",
+    headline: "Your laundry picked up and delivered, right to your door.",
     subheadline:
       "Wash & fold and dry cleaning, with free pickup & delivery across Park Slope and surrounding Brooklyn neighborhoods. Family-owned, community-rooted, and never run by an app.",
     primaryCta: { label: "Book a Pickup", href: "/book" },
