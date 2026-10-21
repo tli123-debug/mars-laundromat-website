@@ -9,6 +9,7 @@ const exploreLinks = [
 ];
 
 const serviceLinks = [
+  { label: "Pickup & Delivery", href: "/pickup-delivery" },
   { label: "Wash & Fold", href: "/services/wash-and-fold" },
   { label: "Dry Cleaning & Ironing", href: "/services/dry-cleaning" },
   { label: "Commercial Laundry", href: "/services/commercial" },

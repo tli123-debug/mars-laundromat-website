@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { siteConfig } from "@/content/site-config";
+import { createLocalBusinessSchema } from "@/content/local-business-schema";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -17,7 +18,7 @@ const fraunces = Fraunces({
 });
 
 const defaultTitle =
-  "Mars Laundromat | Laundry Pickup & Delivery in Brooklyn";
+  "Laundry Pickup & Delivery in Park Slope | Mars Laundromat";
 const defaultDescription =
   "Family-owned Park Slope laundromat offering Wash & Fold, Dry Cleaning & Ironing, and free pickup & delivery across Park Slope and nearby Brooklyn neighborhoods.";
 
@@ -44,12 +45,20 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  const localBusinessSchema = createLocalBusinessSchema();
+
   return (
     <html
       lang="en"
       className={cn("h-full", "antialiased", inter.variable, fraunces.variable)}
     >
       <body className="min-h-full flex flex-col font-sans">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(localBusinessSchema).replace(/</g, "\\u003c"),
+          }}
+        />
         {children}
         <Toaster position="bottom-right" />
       </body>
