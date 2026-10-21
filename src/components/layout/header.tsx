@@ -24,7 +24,6 @@ const MOBILE_NAV_LINK_CLASSNAME =
   "block rounded-md px-2 py-3 text-base font-medium text-foreground/80 hover:text-foreground";
 
 const serviceLinks = [
-  { label: "Pickup & Delivery", href: "/pickup-delivery" },
   { label: "Wash & Fold", href: "/services/wash-and-fold" },
   { label: "Dry Cleaning & Ironing", href: "/services/dry-cleaning" },
   { label: "Commercial Laundry Services", href: "/services/commercial" },

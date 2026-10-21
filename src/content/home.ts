@@ -13,30 +13,12 @@ const dryCleaningMinimumNote = `${formatDollars(DRY_CLEANING_MINIMUM_CENTS)} min
 
 export const home = {
   hero: {
-    eyebrow: "Free pickup & delivery · Park Slope and nearby Brooklyn",
-    headline: "Laundry pickup & delivery, handled by your neighborhood laundromat.",
+    eyebrow: "Park Slope and nearby Brooklyn",
+    headline: "Your laundry, cared for like family.",
     subheadline:
-      "Schedule Wash & Fold or Dry Cleaning & Ironing from your door. Mars is family-owned, based in Park Slope, and never run by an app.",
-    primaryCta: { label: "Book a Free Pickup", href: "/book" },
-    secondaryCta: { label: "See How It Works", href: "/pickup-delivery" },
-  },
-
-  pickupDelivery: {
-    eyebrow: "Door-to-door laundry service",
-    heading: "We pick it up. We bring it back clean.",
-    body:
-      "Choose a pickup window online and our own local team handles the rest. Your clothes are cared for at Mars Laundromat on 6th Avenue, then returned to your door on the schedule we confirm with you.",
-    facts: [
-      { value: "Free", label: "pickup & delivery in our service area" },
-      {
-        value: `${formatDollars(PRICE_PER_POUND_CENTS)}/lb`,
-        label: `Wash & Fold · ${formatDollars(MINIMUM_ORDER_CENTS)} minimum`,
-      },
-      { value: "Next day", label: "normal return for standard Wash & Fold" },
-    ],
-    coverage: `Serving ${coverageAreaList()}.`,
-    detailsCta: { label: "Explore Pickup & Delivery", href: "/pickup-delivery" },
-    bookingCta: { label: "Book a Pickup", href: "/book" },
+      "Wash & fold and dry cleaning, with free pickup & delivery across Park Slope and surrounding Brooklyn neighborhoods. Family-owned, community-rooted, and never run by an app.",
+    primaryCta: { label: "Book a Pickup", href: "/book" },
+    secondaryCta: { label: "Call us", href: "tel" },
   },
 
   services: {

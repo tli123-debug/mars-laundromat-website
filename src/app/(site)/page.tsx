@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { home } from "@/content/home";
 import { images } from "@/content/images";
+import { phoneHref } from "@/content/site-config";
 import { GoogleReviews } from "@/components/home/google-reviews";
 
 export default function HomePage() {
@@ -38,58 +39,12 @@ export default function HomePage() {
             >
               {home.hero.primaryCta.label}
             </Link>
-            <Link
-              href={home.hero.secondaryCta.href}
+            <a
+              href={phoneHref()}
               className="inline-flex items-center rounded-full border border-white/60 bg-white/10 px-6 py-3 text-base font-semibold text-white backdrop-blur transition-colors hover:bg-white/20"
             >
               {home.hero.secondaryCta.label}
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="border-b border-border bg-foreground text-background">
-        <div className="mx-auto max-w-6xl px-6 py-14 sm:py-16">
-          <div className="grid gap-10 lg:grid-cols-[1.05fr_1fr] lg:items-end lg:gap-16">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-widest text-primary">
-                {home.pickupDelivery.eyebrow}
-              </p>
-              <h2 className="mt-4 max-w-2xl font-display text-3xl font-semibold leading-tight sm:text-4xl">
-                {home.pickupDelivery.heading}
-              </h2>
-              <p className="mt-5 max-w-2xl text-base leading-relaxed text-background/80">
-                {home.pickupDelivery.body}
-              </p>
-              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-background/65">
-                {home.pickupDelivery.coverage}
-              </p>
-              <div className="mt-8 flex flex-wrap gap-4">
-                <Link
-                  href={home.pickupDelivery.bookingCta.href}
-                  className="inline-flex items-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-                >
-                  {home.pickupDelivery.bookingCta.label}
-                </Link>
-                <Link
-                  href={home.pickupDelivery.detailsCta.href}
-                  className="inline-flex items-center rounded-full border border-background/30 px-6 py-3 text-sm font-semibold text-background transition-colors hover:bg-background/10"
-                >
-                  {home.pickupDelivery.detailsCta.label}
-                </Link>
-              </div>
-            </div>
-
-            <dl className="grid gap-px overflow-hidden rounded-2xl border border-background/15 bg-background/15 sm:grid-cols-3 lg:grid-cols-1">
-              {home.pickupDelivery.facts.map((fact) => (
-                <div key={fact.label} className="bg-foreground px-6 py-5">
-                  <dt className="text-sm leading-relaxed text-background/65">{fact.label}</dt>
-                  <dd className="mt-1 font-display text-2xl font-semibold text-background">
-                    {fact.value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
+            </a>
           </div>
         </div>
       </section>
