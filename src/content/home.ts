@@ -22,7 +22,7 @@ export const home = {
   },
 
   services: {
-    heading: "Laundry pickup at no additional cost, however you need it",
+    heading: "Life's too short for laundry, let our experts handle it.",
     body: "Book Wash & Fold, Dry Cleaning & Ironing, or both together since everything comes back on the same trip.",
     items: [
       {

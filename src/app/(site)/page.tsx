@@ -49,7 +49,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 pt-20">
+      <section className="mx-auto max-w-6xl px-6 pt-12 sm:pt-20">
         <h2 className="font-display text-3xl font-semibold sm:text-4xl">{home.services.heading}</h2>
         <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
           {home.services.body}
