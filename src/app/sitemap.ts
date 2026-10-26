@@ -9,6 +9,7 @@ const routes = [
   "/services/commercial",
   "/contact",
   "/book",
+  "/privacy",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

@@ -48,6 +48,8 @@ import { booking as bookingContent } from "@/content/booking";
 import { createBooking } from "@/app/(site)/book/actions";
 import { ACQUISITION_SOURCE_FORM_OPTIONS, resolveAcquisitionSourceFormDefault } from "@/lib/acquisition-source";
 import type { AcquisitionSource } from "@/types/database.types";
+import { clearAdAttribution, getBrowserStorage, storedAdSource } from "@/lib/ad-attribution";
+import { trackBookingConversion } from "@/lib/google-ads";
 import type { ActionResult } from "@/lib/booking-submission";
 import {
   buildRequestedScheduleSummary,
@@ -118,7 +120,13 @@ export function BookingForm({
   trackedAcquisitionSource?: AcquisitionSource | null;
 } = {}) {
   const [isPending, startTransition] = useTransition();
-  const hasTrackedAcquisitionSource = trackedAcquisitionSource !== null;
+  // A tracked link's ?source= (read server-side by /book) always wins.
+  // Otherwise, a source remembered in this browser from an earlier landing
+  // page (a Google ad click, the Business Profile booking link) fills in
+  // after mount — see ad-attribution.ts — and is treated the same way: the
+  // "How did you hear about us?" question is skipped.
+  const [rememberedSource, setRememberedSource] = useState<AcquisitionSource | null>(null);
+  const hasTrackedAcquisitionSource = (trackedAcquisitionSource ?? rememberedSource) !== null;
   const {
     register,
     control,
@@ -210,6 +218,18 @@ export function BookingForm({
       setSelectResetKey((key) => key + 1);
       setInlineMessage({ kind: "error", text: stored.errorMessage });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Deliberately after the restore effect above, so it applies last and a
+  // restored attempt picks up the source too. No-ops when the URL already
+  // carried a tracked source, or when nothing is remembered.
+  useEffect(() => {
+    if (trackedAcquisitionSource !== null) return;
+    const remembered = storedAdSource(getBrowserStorage(), Date.now());
+    if (!remembered) return;
+    setRememberedSource(remembered);
+    setValue("acquisitionSource", remembered);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -458,6 +478,16 @@ export function BookingForm({
 
   function applyResult(result: ActionResult, submissionId: string, values: BookingInput) {
     if (result.status === "success") {
+      // The server has confirmed the booking exists — only now is it a
+      // conversion. Skipped when the hidden honeypot field was filled (a bot
+      // gets a fake "success" from createBooking), and never throws:
+      // tracking can't be allowed to disturb the success screen. Runs here
+      // and not in the mount-time restore, so a refresh never re-reports.
+      if (!values.companyWebsite) trackBookingConversion(result.bookingId);
+      // Consume the remembered ad click so this customer's next order isn't
+      // credited to it (Google Ads counts one conversion per click as well).
+      clearAdAttribution(getBrowserStorage());
+      setRememberedSource(null);
       const requestedSummary = buildRequestedScheduleSummary(values);
       persistSucceededAttempt(submissionId, result.bookingId, requestedSummary);
       setSummary(requestedSummary);
@@ -503,6 +533,11 @@ export function BookingForm({
     // same-session tracked source; bare reset() also correctly re-unchecks
     // smsConsent, since a new request needs fresh consent.
     reset();
+    // reset() restores the default (blank for a visit with no ?source=), so
+    // re-apply a source remembered from an ad click that no booking has
+    // used up yet (e.g. starting over after a conflict). Already null after
+    // a successful booking, which consumed it.
+    if (rememberedSource) setValue("acquisitionSource", rememberedSource);
     setSelectResetKey((key) => key + 1);
     setAddOns(BOOKING_ADD_ONS_DEFAULT);
     setInlineMessage(null);

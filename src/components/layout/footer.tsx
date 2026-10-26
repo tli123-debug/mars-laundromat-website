@@ -79,9 +79,14 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 border-t border-border pt-6 text-xs text-muted-foreground">
-          © {new Date().getFullYear()} {siteConfig.name}. Proudly serving{" "}
-          {siteConfig.coverageArea.shortLabel}.
+        <div className="mt-10 flex flex-col gap-2 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:gap-6">
+          <span>
+            © {new Date().getFullYear()} {siteConfig.name}. Proudly serving{" "}
+            {siteConfig.coverageArea.shortLabel}.
+          </span>
+          <Link href="/privacy" className="w-fit transition-colors hover:text-foreground">
+            Privacy Policy
+          </Link>
         </div>
       </div>
     </footer>
