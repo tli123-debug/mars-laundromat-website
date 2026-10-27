@@ -71,14 +71,14 @@ export const privacy = {
         "Supabase stores our booking records.",
         "Resend sends booking notifications to our staff by email.",
         "An AI translation service translates the notes and dry-cleaning item descriptions you type so our staff can read them. Only that text is sent, not the rest of your booking.",
-        "Google, if you arrive from one of our Google ads (see the next section).",
+        "Google, through the advertising tag on our pages (see the next section).",
       ],
     },
     {
       heading: "Browser storage and advertising",
       paragraphs: [
         "Our site keeps a little information in your browser. One piece stops a booking from being submitted twice and restores your form if you refresh the page. Another remembers, for up to 30 days, that you arrived from a Google ad or one of our links.",
-        "When we run Google ads, Google's measurement tag also sets cookies on your device if you arrive from one of those ads. This lets Google tell us when an ad led to a booking. You can control how Google uses this information, or turn off personalized ads, with the links below. You can also block or clear cookies in your browser settings. The site will still work, and you can always book by phone.",
+        "When we run Google ads, our pages load Google's advertising tag. It sets cookies on your device and sends Google information about your visit, such as the pages you view, so Google can tell us when an ad led to a booking and can show relevant ads. You can control how Google uses this information, or turn off personalized ads, with the links below. You can also block or clear cookies in your browser settings. The site will still work, and you can always book by phone.",
       ],
       links: [
         { label: "Google Ads Settings", href: "https://adssettings.google.com" },
